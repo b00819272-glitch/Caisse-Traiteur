@@ -164,6 +164,12 @@ table.sheet{border-collapse:separate;border-spacing:0;font-family:var(--num);fon
 .sheet input::placeholder{color:var(--rule)}
 .sheet td.w{background:color-mix(in srgb,var(--ink-soft) 55%,transparent)}
 .sheet td.w input{color:var(--ink);font-weight:500}
+.sheet td.tot{padding:6px 8px;text-align:right;min-width:5.8em;background:color-mix(in srgb,var(--ink-soft) 55%,transparent)}
+.sheet td.tot .v{display:block;font-weight:600;font-size:16px;color:var(--text)}
+.sheet td.tot .wr{display:block;font-size:11px;color:var(--bad);font-family:var(--body);white-space:nowrap}
+.sheet tfoot td.tot .v{color:var(--ink)}
+.sheet tr.selrow th,.sheet tr.selrow td{background:color-mix(in srgb,var(--warn-bg) 85%,transparent)!important}
+.sheet tr.selrow .day button{color:var(--warn)}
 .sheet td.ro span{display:block;padding:9px 8px;text-align:right;min-width:5.6em;font-size:17px;color:var(--ink);font-weight:500}
 .sheet td.calc{padding:0 8px;text-align:right;color:var(--muted);min-width:5.6em}
 .sheet td.calc.strong{color:var(--text);font-weight:600}
@@ -239,6 +245,7 @@ body{font-size:17px}
 .hero:focus-within{outline:3px solid var(--warn);outline-offset:3px}
 .tip{margin:0;text-align:center;color:var(--muted);font-size:15px}
 .center{display:flex;flex-direction:column;align-items:center;gap:6px}
+.small-link{font-size:13px!important;color:var(--muted)!important;margin-top:28px}
 .linkbtn{background:none;border:0;color:var(--ink);text-decoration:underline;text-underline-offset:4px;font-size:16px;padding:12px 8px;cursor:pointer;min-height:44px;font-family:var(--body)}
 .resume{min-height:60px;font-size:18px;justify-content:space-between;border-color:var(--ink);color:var(--ink)}
 .resume::after{content:"→";font-size:22px}
@@ -280,6 +287,11 @@ details.card[open] summary{margin-bottom:12px}
 .bar .btn{min-height:56px;font-size:18px}
 .rowsheet .panel .btn{min-height:52px;font-size:17px}
 /* tabs, dashboard, sheets */
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:22;background:var(--card);border-top:2px solid var(--warn);box-shadow:0 -6px 20px rgba(15,20,40,.12);
+  padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.selbar .in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.selbar .btn{flex:1;min-height:52px;font-size:17px;white-space:nowrap;padding:10px 8px}
+.selcount{font-weight:600;color:var(--warn)}
 .tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
 .tabs button{border:0;background:transparent;border-radius:10px;min-height:48px;font-weight:600;font-size:17px;color:var(--muted);cursor:pointer;font-family:var(--body)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--card)}
@@ -396,7 +408,7 @@ label.btn{cursor:pointer}
     <div class="status err" id="status" hidden></div>
     <div class="center">
       <button class="btn primary" id="btnRetry" type="button" data-t="retry" hidden>Réessayer</button>
-      <button class="linkbtn" id="btnManual" type="button" data-t="manualBtn">Remplir à la main, sans photo</button>
+      <button class="linkbtn small-link" id="btnManual" type="button" data-t="manualBtn">Remplir à la main, sans photo</button>
     </div>
     <p class="note" id="engineNote" hidden></p>
   </section>
@@ -431,7 +443,6 @@ label.btn{cursor:pointer}
       <div class="sheet-wrap" id="sheetWrap"><table class="sheet" id="sheet"></table></div>
       <div class="tablebar">
         <button class="btn ghost" id="btnUndo" type="button" data-t="undo" disabled>Annuler</button>
-        <button class="btn ghost" id="colToggle" type="button" hidden></button>
       </div>
     </div>
 
@@ -576,6 +587,22 @@ label.btn{cursor:pointer}
 </div>
 
 <!-- row tools -->
+<div class="selbar" id="selBar" hidden>
+  <div class="in">
+    <div class="seg" role="group" id="selScope">
+      <button type="button" data-scope="all" aria-pressed="true" data-t="scopeAll">Tout</button>
+      <button type="button" data-scope="20" aria-pressed="false">20 %</button>
+      <button type="button" data-scope="10" aria-pressed="false">10 %</button>
+    </div>
+    <span class="selcount" id="selCount"></span>
+    <div class="row" style="gap:8px;width:100%">
+      <button class="btn" type="button" id="selUp" data-t="moveUp">↑ Monter</button>
+      <button class="btn" type="button" id="selDown" data-t="moveDown">↓ Descendre</button>
+      <button class="btn primary" type="button" id="selDone" data-t="selDone">Terminé</button>
+    </div>
+  </div>
+</div>
+
 <div class="rowsheet" id="rowSheet" hidden>
   <div class="panel" role="dialog" aria-modal="true" aria-labelledby="rowTitle">
     <h2 id="rowTitle">—</h2>
@@ -979,53 +1006,57 @@ function inputCell(key, val, cls){
 }
 const other = () => LANG === 'zh' ? 'fr' : 'zh';
 const headCell = (lk, last) => `<th class="${last ? 'gap' : ''}">${t(lk)}<span class="zh">${tr(other(), lk)}</span></th>`;
+function totCell(key, cls){ return `<td class="tot ${cls || ''}" data-cell="${key}"><span class="v"></span><span class="wr"></span></td>`; }
 function renderSheet(){
   closePop();
   const n = daysIn(S.month, S.year);
   let lastRow = n; for (let d = n + 1; d <= 31; d++){ const r = S.days[d]; if (INPUTS.some(k => r[k] != null) || r.wtot != null || r.w20 != null) lastRow = d; }
-  const used = k => S.showAll || S.col[k] != null || Object.keys(S.uncertain).some(u => u.endsWith('.' + k)) || S.days.some(r => r[k] != null && r[k] !== 0);
-  const v20 = F20.filter(f => used(f[0]));
-  const show20 = v20.length > 0 || used('w20');
-  const v10 = F10.filter(f => used(f[0]) || f[0] === 'cb10' || f[0] === 'esp10');
-  const hiddenN = (F20.length - v20.length) + (show20 ? 0 : 1) + (F10.length - v10.length);
-  $('#colToggle').hidden = !hiddenN && !S.showAll;
-  $('#colToggle').textContent = S.showAll ? t('colHide') : t('colShow', {n:hiddenN});
-  // Column order for the phone: the 10 % block (where most of the money is) first, then the day total, then the 20 % block.
-  const g10 = v10.length, g20 = show20 ? v20.length + 1 : 0;
+  // Same layout as the paper: TVA 20 % then TVA 10 %, each with chèque, CB, espèces, tickets and a total.
+  // The totals are calculated; what was written on the sheet appears under them only when it differs.
   const head = `<thead>
-    <tr class="grp"><th class="day" rowspan="2">${t('day')}</th><th colspan="${g10}" class="gap">${t('vat10')}</th><th colspan="2" class="gap">${t('dayTotal')}</th>${show20 ? `<th colspan="${g20}">${t('vat20')}</th>` : ''}</tr>
-    <tr>${v10.map((f, i) => headCell(f[1], i === g10 - 1)).join('')}${headCell('computed')}${headCell('written', true)}
-    ${show20 ? v20.map(f => headCell(f[1])).join('') + headCell('written') : ''}</tr></thead>`;
+    <tr class="grp"><th class="day" rowspan="2">${t('day')}</th><th colspan="5" class="gap">${t('vat20')}</th><th colspan="5">${t('vat10')}</th></tr>
+    <tr>${F20.map(f => headCell(f[1])).join('')}${headCell('totalCol', true)}${F10.map(f => headCell(f[1])).join('')}${headCell('totalCol')}</tr></thead>`;
   let body = '<tbody>';
   for (let d = 1; d <= lastRow; d++){
     const r = S.days[d];
-    body += `<tr data-day="${d}" class="${d > n ? 'out' : ''}"><th class="day" scope="row"><button type="button" data-row="${d}"${editable ? '' : ' disabled'} aria-label="${esc(t('rowTitle', {d}))}">${d}</button></th>`;
-    v10.forEach((f, i) => body += inputCell(`${d}.${f[0]}`, r[f[0]], i === g10 - 1 ? 'gap' : ''));
-    body += `<td class="calc strong" data-calc="${d}"></td>`;
-    body += roCell(`${d}.wtot`, r.wtot, 'w gap');
-    if (show20){ v20.forEach(f => body += inputCell(`${d}.${f[0]}`, r[f[0]])); body += roCell(`${d}.w20`, r.w20, 'w'); }
+    body += `<tr data-day="${d}" class="${d > n ? 'out' : ''}${sel && sel.days.has(d) ? ' selrow' : ''}"><th class="day" scope="row"><button type="button" data-row="${d}"${editable ? '' : ' disabled'} aria-label="${esc(t('rowTitle', {d}))}">${d}</button></th>`;
+    F20.forEach(f => body += inputCell(`${d}.${f[0]}`, r[f[0]]));
+    body += totCell(`${d}.w20`, 'gap');
+    F10.forEach(f => body += inputCell(`${d}.${f[0]}`, r[f[0]]));
+    body += totCell(`${d}.wtot`);
     body += '</tr>';
   }
   body += '</tbody>';
-  const foot = `<tfoot>
-    <tr><th class="day">Σ</th>${v10.map((f, i) => `<td class="calc strong ${i === g10 - 1 ? 'gap' : ''}" data-sum="${f[0]}"></td>`).join('')}<td class="calc strong" data-sum="tot"></td><td class="calc gap"></td>
-      ${show20 ? v20.map(f => `<td class="calc strong" data-sum="${f[0]}"></td>`).join('') + `<td class="calc strong" data-sum="ttc20"></td>` : ''}</tr>
-    <tr class="written"><th class="day" title="${esc(t('wInputTitle'))}">${t('written')}</th>${v10.map((f, i) => roCell(`0.${f[0]}`, S.col[f[0]], 'w' + (i === g10 - 1 ? ' gap' : ''))).join('')}<td class="calc"></td>${roCell('0.wtot', S.col.wtot, 'w gap')}
-      ${show20 ? v20.map(f => roCell(`0.${f[0]}`, S.col[f[0]], 'w')).join('') + roCell('0.w20', S.col.w20, 'w') : ''}</tr>
-  </tfoot>`;
+  const foot = `<tfoot><tr><th class="day">${t('totalRow')}</th>${F20.map(f => totCell(`0.${f[0]}`)).join('')}${totCell('0.w20', 'gap')}${F10.map(f => totCell(`0.${f[0]}`)).join('')}${totCell('0.wtot')}</tr></tfoot>`;
   $('#sheet').innerHTML = head + body + foot;
   $('#recap').innerHTML = RECAP.map(([k, lk]) => `<div class="rc" data-cell="-1.${k}"><span class="l">${t(lk)}</span><span class="v">${S.recap[k] == null || isNaN(S.recap[k]) ? '—' : fmt(S.recap[k])}</span></div>`).join('');
+}
+function fillTotals(c){
+  const put = (key, val, written, show) => {
+    const td = document.querySelector(`[data-cell="${key}"]`); if (!td) return;
+    td.querySelector('.v').textContent = show ? fmt(val) : '';
+    const w = td.querySelector('.wr');
+    const diff = written != null && !isNaN(written) && !eq(written, val);
+    w.textContent = diff ? t('writtenShort', {v:fmt(written)}) : ''; w.hidden = !diff;
+  };
+  for (let d = 1; d <= 31; d++){
+    const r = S.days[d], cr = c.rows[d];
+    put(`${d}.w20`, cr.ttc20, r.w20, cr.ttc20 || r.w20 != null);
+    put(`${d}.wtot`, cr.tot, r.wtot, cr.has || r.wtot != null);
+  }
+  INPUTS.forEach(k => put(`0.${k}`, c.sum[k], S.col[k], true));
+  put('0.w20', c.sum.ttc20, S.col.w20, true);
+  put('0.wtot', c.sum.tot, S.col.wtot, true);
 }
 
 function refresh(){
   const c = calc(), ch = activeIssues(c);
   $('#monthTitle').textContent = monthYear(S.month, S.year);
+  fillTotals(c);
   for (let d = 1; d <= 31; d++){
-    const el = document.querySelector(`[data-calc="${d}"]`); if (el) el.textContent = c.rows[d].has ? fmt(c.rows[d].tot) : '';
     const tr_ = document.querySelector(`tr[data-day="${d}"]`);
     if (tr_) tr_.classList.toggle('closed', !c.rows[d].has && S.days[d].wtot == null && d <= c.n);
   }
-  document.querySelectorAll('[data-sum]').forEach(el => { el.textContent = fmt(c.sum[el.dataset.sum]); });
   document.querySelectorAll('[data-cell]').forEach(el => {
     const k = el.dataset.cell;
     el.classList.toggle('is-bad', ch.cellsBad.has(k));
@@ -1077,6 +1108,44 @@ function gotoCell(key, focus = true){
   td.scrollIntoView({block:'center', inline:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   td.classList.remove('flash'); void td.offsetWidth; td.classList.add('flash');
   const i = td.querySelector('input'); if (i && focus) setTimeout(() => i.focus({preventScroll:true}), 350);
+}
+
+/* ---------- moving several rows by one line ---------- */
+let sel = null; // {days:Set, scope:'all'|'20'|'10'}
+const SCOPE = {all:[...INPUTS, 'w20', 'wtot'], '20':['chq20','cb20','esp20','tk20','w20'], '10':['chq10','cb10','esp10','tk10','wtot']};
+function selRender(){
+  document.querySelectorAll('#sheet tbody tr[data-day]').forEach(tr => tr.classList.toggle('selrow', !!(sel && sel.days.has(+tr.dataset.day))));
+  $('#selBar').hidden = !sel; $('#bar').hidden = !!sel || $('#stepReview').hidden;
+  if (!sel) return;
+  $('#selCount').textContent = t('selCount', {n:sel.days.size});
+  document.querySelectorAll('#selScope [data-scope]').forEach(b => b.setAttribute('aria-pressed', b.dataset.scope === sel.scope));
+}
+function selToggle(d){
+  if (!editable) return;
+  if (!sel) sel = {days:new Set(), scope:'all'};
+  sel.days.has(d) ? sel.days.delete(d) : sel.days.add(d);
+  if (!sel.days.size) sel = null;
+  selRender();
+}
+function moveRows(dir){
+  if (!sel || !editable) return;
+  const n = daysIn(S.month, S.year), fields = SCOPE[sel.scope];
+  const days = [...sel.days].sort((a, b) => a - b);
+  const blocks = []; days.forEach(d => { const b = blocks[blocks.length - 1]; if (b && d === b[1] + 1) b[1] = d; else blocks.push([d, d]); });
+  if (dir < 0 ? blocks[0][0] <= 1 : blocks[blocks.length - 1][1] >= n){ toast(t('tCantMove')); return; }
+  snapshot();
+  const take = d => Object.fromEntries(fields.map(k => [k, S.days[d][k]]));
+  const put = (d, o) => fields.forEach(k => { S.days[d][k] = o[k]; });
+  const moveUnc = (from, to) => fields.forEach(k => { const a = `${from}.${k}`; if (S.uncertain[a] !== undefined){ S.uncertain[`${to}.${k}`] = S.uncertain[a]; delete S.uncertain[a]; } });
+  const order = dir < 0 ? blocks : blocks.slice().reverse();
+  order.forEach(([a, b]) => {
+    const other = dir < 0 ? a - 1 : b + 1, saved = take(other);
+    const tmpU = {}; fields.forEach(k => { const key = `${other}.${k}`; if (S.uncertain[key] !== undefined){ tmpU[k] = S.uncertain[key]; delete S.uncertain[key]; } });
+    if (dir < 0){ for (let d = a; d <= b; d++){ put(d - 1, take(d)); moveUnc(d, d - 1); } put(b, saved); Object.entries(tmpU).forEach(([k, v]) => { S.uncertain[`${b}.${k}`] = v; }); }
+    else { for (let d = b; d >= a; d--){ put(d + 1, take(d)); moveUnc(d, d + 1); } put(a, saved); Object.entries(tmpU).forEach(([k, v]) => { S.uncertain[`${a}.${k}`] = v; }); }
+  });
+  sel.days = new Set(days.map(d => d + dir));
+  renderSheet(); changed(); selRender();
 }
 
 /* ---------- row tools ---------- */
@@ -1484,6 +1553,12 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  msExists:'Ce mois a déjà des données.', msContinue:'Valider', msExistsMove:'Ce mois a déjà des données : elles seront remplacées.',
+  msNotRead:'Vérifiez le mois.', msTitleManual:'Remplir un mois à la main ?', msManual:'Sans photo, tout est à taper. Choisissez le mois puis validez.',
+  draftBand:'{m} a déjà des données. Rien ne change avant « Valider et remplacer » en bas.',
+  tableHelp:'Touchez un chiffre pour le corriger. Touchez les jours pour décaler des lignes.',
+  totalRow:'Total', totalCol:'Total', writtenShort:'écrit {v}', scopeAll:'Tout', moveUp:'↑ Monter', moveDown:'↓ Descendre', selDone:'Terminé',
+  selCount:'{n} ligne(s)', tCantMove:'Impossible de décaler plus loin.',
   appName:"Chiffre d'affaires du mois",
   cloudOk:'☁ Sauvegardé en ligne à {h}', cloudBusy:'☁ Sauvegarde en ligne en cours…', cloudDenied:"☁ Sauvegarde en ligne impossible : ce compte doit être « Éditeur » de la page (menu Partager).", cloudErr:'☁ Sauvegarde en ligne pas faite pour le moment, elle sera retentée à la prochaine modification.',
   kT20:'Jour {d} — total TVA 20 %', kTot:'Jour {d} — total du jour', kNoTot:'Jour {d} — pas de total écrit', kNoDet:'Jour {d} — détail manquant',
@@ -1492,15 +1567,11 @@ Object.assign(I18N.fr, {
   popUnc:'Quel est le bon chiffre ?', popFix:'ou tapez le bon chiffre dans la case', popChose:'{v} retenu', popKept:'{v} confirmé',
   tabTodo:'À vérifier ({n})', tabHist:'Historique des erreurs ({n})', histEmpty:"Aucune erreur vérifiée pour ce mois.", todoEmpty:'Rien à vérifier.',
   dashAckTitle:'Historique des erreurs', ackBtn:"C'est vérifié",
-  ackBtn:"C'est vérifié", ackedTitle:'Points vérifiés ({n})', ackedOn:'vérifié le {d}', unack:'Rouvrir', dashAckTitle:'Points vérifiés', vAcked:'{n} point(s) vérifié(s) à la main',
-  msExists:"Ce mois a déjà des chiffres dans le tableau de bord. Vous verrez d'abord le résultat : rien ne sera remplacé tant que vous n'aurez pas validé.",
-  msContinue:"Voir le résultat d'abord", msExistsMove:'Ce mois a déjà des chiffres : ils seront remplacés par ceux-ci.',
-  draftBand:'Brouillon : {m} a déjà des chiffres enregistrés (total {t} €). Ils restent tels quels tant que vous ne validez pas en bas de la page.',
+  ackedTitle:'Points vérifiés ({n})', ackedOn:'vérifié le {d}', unack:'Rouvrir', vAcked:'{n} point(s) vérifié(s) à la main',
   validate:'Valider et remplacer {m}', discardDraft:'Abandonner ce brouillon', resumeDraft:'Brouillon en attente : {m}, reprendre',
   cfTitle:'Remplacer {m} ?', cfBody:'Les chiffres enregistrés pour {m} (total {a} €) vont être remplacés par ceux de cette feuille (total {b} €). Le remplacement sera noté dans le tableau de bord.',
   cfBad:'Attention : il reste {n} écart(s) non corrigé(s) dans ce tableau.', cfYes:'Oui, remplacer',
   tReplaced:'{m} remplacé', tDraftDropped:"Brouillon abandonné, rien n'a été modifié", logReplace:'{d} · {m} remplacé : total {a} → {b}',
-  tableHelp:'Touchez un chiffre pour le corriger (chèque, CB, espèces, tickets). Les totaux se calculent tout seuls. Les colonnes « écrit » sont les totaux lus sur la feuille : ils servent au contrôle et ne se modifient pas.',
   recapHelp:'Lus sur la feuille, pour le contrôle. Ils ne se modifient pas.',
   tabPhoto:'Nouveau mois', tabDash:'Tableau de bord',
   corrBand:'Mode correction : les mois verrouillés sont modifiables', corrOff:'Quitter',
@@ -1513,8 +1584,7 @@ Object.assign(I18N.fr, {
   kLast:'Dernier mois · {m}', kYtd:'Cumul {y} ({r})', kAvg:'Moyenne des 12 derniers mois',
   chipYoY:'{p} par rapport à {m}', chipYtd:'{p} par rapport à {y}', noCompare:"pas de comparaison avec l'année d'avant",
   dtOpen:'Ouvrir le détail', pdfBtn:'PDF', noPhoto:'Pas de photo pour ce mois', lockedShort:'Verrouillé',
-  msTitle:'Quel mois est cette feuille ?', msNotRead:"Le mois ou l'année n'a pas pu être lu sur la photo. Vérifiez puis validez.",
-  msManual:'Pour quel mois remplissez-vous la feuille ?', msMove:'Déplacer ces chiffres vers quel mois ?', msConfirm:'Vérifiez le mois.',
+  msTitle:'Quel mois est cette feuille ?',   msMove:'Déplacer ces chiffres vers quel mois ?', msConfirm:'Vérifiez le mois.',
   msLocked:'Ce mois a plus de 6 mois : il est verrouillé et ne peut pas être remplacé.',
   ok:'Valider', replace:'Remplacer', cancel:'Annuler',
   histTitle:'Historique', histInfo:'{n} mois enregistrés sur ce téléphone, dont {p} avec photo.',
@@ -1537,6 +1607,12 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  msExists:'这个月已经有数据了。', msContinue:'确定', msExistsMove:'这个月已经有数据，会被替换。',
+  msNotRead:'请确认月份。', msTitleManual:'手动填写一个月？', msManual:'没有照片，需要手动输入所有数字。选好月份后点确定。',
+  draftBand:'{m} 已经有数据。在点最下面的“确认并替换”之前不会改变。',
+  tableHelp:'点数字可以修改。点日期可以移动行。',
+  totalRow:'合计', totalCol:'合计', writtenShort:'手写 {v}', scopeAll:'全部', moveUp:'↑ 上移', moveDown:'↓ 下移', selDone:'完成',
+  selCount:'已选 {n} 行', tCantMove:'不能再移动了。',
   appName:'每月营业额',
   cloudOk:'☁ 已在线保存（{h}）', cloudBusy:'☁ 正在在线保存…', cloudDenied:'☁ 无法在线保存：这个账号需要是页面的“编辑者”（分享菜单）。', cloudErr:'☁ 暂时没有在线保存，下次修改时会再试。',
   kT20:'{d} 号 — 20% 税合计', kTot:'{d} 号 — 当天合计', kNoTot:'{d} 号 — 没有手写合计', kNoDet:'{d} 号 — 缺少明细',
@@ -1545,15 +1621,11 @@ Object.assign(I18N.zh, {
   popUnc:'哪个数字是对的？', popFix:'或者在格子里输入正确的数字', popChose:'选了 {v}', popKept:'确认是 {v}',
   tabTodo:'需要检查（{n}）', tabHist:'错误记录（{n}）', histEmpty:'这个月还没有核对过的错误。', todoEmpty:'没有需要检查的。',
   dashAckTitle:'错误记录', ackBtn:'已核对',
-  ackBtn:'已核对', ackedTitle:'已核对的问题（{n}）', ackedOn:'核对于 {d}', unack:'撤回', dashAckTitle:'已核对的问题', vAcked:'{n} 处已手动核对',
-  msExists:'总览里这个月份已经有数据了。会先显示识别结果，在您确认之前不会替换。',
-  msContinue:'先看结果', msExistsMove:'这个月份已经有数据，会被这里的数字替换。',
-  draftBand:'草稿：{m} 已经保存过数据（总额 {t} €）。在您点页面最下面的确认之前，原来的数据不会改变。',
+  ackedTitle:'已核对的问题（{n}）', ackedOn:'核对于 {d}', unack:'撤回', vAcked:'{n} 处已手动核对',
   validate:'确认并替换 {m}', discardDraft:'放弃这个草稿', resumeDraft:'有未确认的草稿：{m}，继续',
   cfTitle:'替换 {m}？', cfBody:'{m} 原来保存的数字（总额 {a} €）会被这张表的数字（总额 {b} €）替换。这次替换会记录在总览里。',
   cfBad:'注意：这个表里还有 {n} 处没有改正。', cfYes:'确定替换',
   tReplaced:'{m} 已替换', tDraftDropped:'已放弃草稿，没有修改任何数据', logReplace:'{d} · {m} 已替换：总额 {a} → {b}',
-  tableHelp:'点数字可以修改（支票、兰卡、现金、饭票）。合计会自动计算。“手写”栏是纸上读到的合计，只用来核对，不能修改。',
   recapHelp:'从纸上读到的，只用来核对，不能修改。',
   tabPhoto:'新的月份', tabDash:'总览',
   corrBand:'修改模式：锁定的月份现在可以修改', corrOff:'退出',
@@ -1566,8 +1638,7 @@ Object.assign(I18N.zh, {
   kLast:'最近一个月 · {m}', kYtd:'{y}年累计（{r}）', kAvg:'最近 12 个月平均',
   chipYoY:'比{m} {p}', chipYtd:'比{y}年同期 {p}', noCompare:'没有去年的数据可以比较',
   dtOpen:'打开明细', pdfBtn:'PDF', noPhoto:'这个月没有照片', lockedShort:'已锁定',
-  msTitle:'这张表是哪个月？', msNotRead:'照片上看不清月份或年份，请确认后点确定。',
-  msManual:'要填写哪个月？', msMove:'把这些数字移到哪个月？', msConfirm:'请确认月份。',
+  msTitle:'这张表是哪个月？',   msMove:'把这些数字移到哪个月？', msConfirm:'请确认月份。',
   msLocked:'这个月份超过 6 个月，已锁定，不能替换。',
   ok:'确定', replace:'替换', cancel:'取消',
   histTitle:'历史记录', histInfo:'这部手机上保存了 {n} 个月，其中 {p} 个有照片。',
@@ -1727,7 +1798,7 @@ function msCheck(){
   $('#msOk').hidden = false; $('#msOk').disabled = false; $('#msReplace').hidden = true;
   if (msResolve && msResolve.mode === 'move' && k === S.key) return 'same';
   if (!canEdit(m, y)){ msg.textContent = t('msLocked'); msg.className = 'msmsg bad'; msg.hidden = false; $('#msOk').disabled = true; return 'locked'; }
-  if (H.months[k] && k !== (S && S.key)){
+  if (H.months[k]){
     const move = msResolve && msResolve.mode === 'move';
     msg.textContent = t(move ? 'msExistsMove' : 'msExists'); msg.hidden = false; $('#msOk').hidden = true;
     const b = $('#msReplace'); b.hidden = false; b.textContent = t(move ? 'replace' : 'msContinue'); b.classList.toggle('danger', move); b.classList.toggle('primary', !move);
@@ -1743,6 +1814,7 @@ function askMonth({m, y, mode, reason}){
     const cy = new Date().getFullYear(); let o = '';
     for (let k = cy - 4; k <= cy + 1; k++) o += `<option value="${k}">${k}${LANG === 'zh' ? '年' : ''}</option>`;
     sy.innerHTML = o; sm.value = m; sy.value = y;
+    $('#msTitle').textContent = t(mode === 'manual' ? 'msTitleManual' : 'msTitle');
     $('#msSub').textContent = t(reason === 'unread' ? 'msNotRead' : mode === 'manual' ? 'msManual' : mode === 'move' ? 'msMove' : 'msConfirm');
     msCheck();
     $('#monthSheet').hidden = false; sm.focus();
@@ -1800,7 +1872,7 @@ function updResumeDraft(){
 
 /* ---------- views ---------- */
 function showStep(which){
-  closePop();
+  closePop(); sel = null; if ($('#selBar')) $('#selBar').hidden = true;
   ['Photo','Review','Dash','Settings'].forEach(n => { $('#step' + n).hidden = which !== n.toLowerCase(); });
   $('#bar').hidden = which !== 'review';
   const tab = which === 'dash' ? 'dash' : which === 'settings' ? null : 'photo';
@@ -2294,7 +2366,6 @@ function init(){
   $('#ovClose').addEventListener('click', () => { $('#overlay').hidden = true; document.body.style.overflow = ''; });
   $('#zoomIn').addEventListener('click', () => { zoom = Math.min(4, zoom * 1.3); applyZoom(); });
   $('#zoomOut').addEventListener('click', () => { zoom = Math.max(0.15, zoom / 1.3); applyZoom(); });
-  $('#colToggle').addEventListener('click', () => { S.showAll = !S.showAll; renderSheet(); refresh(); });
   $('#btnUndo').addEventListener('click', () => { if (editable){ undo(); clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); } });
   // month question
   $('#msMonth').addEventListener('change', msCheck); $('#msYear').addEventListener('change', msCheck);
@@ -2302,7 +2373,11 @@ function init(){
   $('#msReplace').addEventListener('click', () => msFinish({m:+$('#msMonth').value, y:+$('#msYear').value, exists:true}));
   $('#msCancel').addEventListener('click', () => msFinish(null));
   // row tools
-  $('#sheet').addEventListener('click', e => { const b = e.target.closest('[data-row]'); if (b && editable) openRow(+b.dataset.row); });
+  $('#sheet').addEventListener('click', e => { const b = e.target.closest('[data-row]'); if (b && editable) selToggle(+b.dataset.row); });
+  $('#selScope').addEventListener('click', e => { const b = e.target.closest('[data-scope]'); if (b && sel){ sel.scope = b.dataset.scope; selRender(); } });
+  $('#selUp').addEventListener('click', () => moveRows(-1));
+  $('#selDown').addEventListener('click', () => moveRows(1));
+  $('#selDone').addEventListener('click', () => { sel = null; selRender(); });
   $('#rowSheet').addEventListener('click', e => { if (e.target.id === 'rowSheet'){ closeRow(); return; } const b = e.target.closest('[data-op]'); if (b){ rowOp(b.dataset.op); if (b.dataset.op !== 'close'){ clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); } } });
   // dashboard
   $('#rng12').addEventListener('click', () => { dashRange = 12; renderDash(); });
