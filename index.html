@@ -113,6 +113,20 @@ select{border:1px solid var(--rule);background:var(--card);border-radius:10px;pa
 .chip.ok{background:var(--ok-bg);color:var(--ok)}
 .issue .t{font-weight:600}
 .issue .d{grid-column:2;color:var(--muted);font-size:14px}
+.minitabs{display:flex;gap:6px;border-bottom:2px solid var(--rule-soft);margin-top:-4px}
+.minitabs button{border:0;background:none;padding:10px 6px;font:600 15px var(--body);color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;min-height:44px}
+.minitabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+#ackList{padding:6px 16px}
+.ok-t{color:var(--ok)}
+.pop{position:absolute;z-index:36;width:min(320px,calc(100vw - 24px));background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:0 10px 30px rgba(15,20,40,.22);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.pop-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:15px}
+.pop-x{border:0;background:var(--paper);border-radius:999px;width:32px;height:32px;font-size:20px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
+.pop-d{margin:0;color:var(--muted);font-size:14px}
+.pop-b{display:flex;gap:8px;flex-wrap:wrap}
+.pop-b .btn{flex:1;min-height:48px;font:600 17px var(--num)}
+.pop-b .btn.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.pop-b .btn.wide{flex-basis:100%;font-family:var(--body);font-size:16px}
+.pop-n{margin:0;font-size:13px;color:var(--muted)}
 .issue-row{display:flex;flex-direction:column;gap:0;border:1px solid var(--rule-soft);border-radius:10px;background:var(--card);overflow:hidden}
 .issue-row .issue{border:0;border-radius:0}
 .ackbtn{border:0;border-top:1px solid var(--rule-soft);background:var(--ok-bg);color:var(--ok);font:600 15px var(--body);padding:12px;min-height:46px;cursor:pointer;text-align:center}
@@ -395,6 +409,12 @@ label.btn{cursor:pointer}
 
     <div class="draftband" id="draftBand" hidden></div>
     <div id="verdict"></div>
+    <div class="minitabs" role="tablist" id="issueTabs">
+      <button type="button" role="tab" id="itTodo" aria-selected="true"></button>
+      <button type="button" role="tab" id="itHist" aria-selected="false"></button>
+    </div>
+    <ul class="issues" id="issueList"></ul>
+    <ul class="acklist card" id="ackList" hidden></ul>
     <div class="card" id="figs"></div>
 
     <div class="card stack">
@@ -410,10 +430,6 @@ label.btn{cursor:pointer}
       </div>
     </div>
 
-    <details class="card" id="ackBox" hidden>
-      <summary id="ackSummary">Points vérifiés</summary>
-      <ul class="acklist" id="ackList"></ul>
-    </details>
 
     <details class="card" id="recapBox">
       <summary data-t="recapTitle">Totaux écrits en bas de la feuille</summary>
@@ -577,6 +593,12 @@ label.btn{cursor:pointer}
     </div>
   </div>
   <div class="scroller" id="ovScroll"><img id="ovImg" alt=""></div>
+</div>
+<div class="pop" id="pop" hidden role="dialog" aria-labelledby="popT">
+  <div class="pop-h"><b id="popT"></b><button type="button" class="pop-x" id="popX" aria-label="×">×</button></div>
+  <p class="pop-d" id="popD"></p>
+  <div class="pop-b" id="popB"></div>
+  <p class="pop-n" id="popN" hidden></p>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -877,7 +899,7 @@ function checks(c, L = LANG){
     const r = S.days[d], cr = c.rows[d];
     const anyWritten = r.w20 != null || r.wtot != null;
     if (d > c.n && (cr.has || anyWritten)){ add('bad', tr(L, 'kDay', {d}), tr(L, 'kOut', {m:monthName(S.month, L), n:c.n}), d, INPUTS.map(k => `${d}.${k}`), `out:${d}`); continue; }
-    INPUTS.concat(['w20','wtot']).forEach(k => { if (r[k] != null && (isNaN(r[k]) || r[k] < 0)) add('bad', `${tr(L, 'kDay', {d})} · ${lab(k)}`, tr(L, 'kInvalid'), d, [`${d}.${k}`], `inv:${d}.${k}`); });
+    INPUTS.concat(['w20','wtot']).forEach(k => { if (r[k] != null && (isNaN(r[k]) || r[k] < 0)) add('bad', `${tr(L, 'kDay', {d})} — ${lab(k)}`, tr(L, 'kInvalid'), d, [`${d}.${k}`], `inv:${d}.${k}`); });
     if (r.w20 != null){
       dayChecked++;
       if (!eq(r.w20, cr.ttc20)) add('bad', tr(L, 'kT20', {d}), tr(L, 'kDiff', {w:fmt(r.w20), c:fmt(cr.ttc20), e:fmt(r.w20 - cr.ttc20)}) + diffHint(L, d, r.w20, cr.ttc20, c), d, [`${d}.w20`], `t20:${d}`);
@@ -902,7 +924,7 @@ function checks(c, L = LANG){
     const [d, k] = key.split('.'); const dn = +d;
     const fname = dn >= 1 || dn === 0 ? (I18N.fr['L_' + k] ? lab(k) : k) : tr(L, 'R_' + k);
     const det = tr(L, 'kUncD', {f:fname, r:u && u.r != null ? fmt(u.r) : '?', a:u && u.a != null ? tr(L, 'kUncOr', {a:fmt(u.a)}) : ''});
-    add('warn', dn >= 1 ? tr(L, 'kUnc', {d:dn}) : tr(L, 'kUncG'), det, dn >= 1 ? dn : dn, [key], `unc:${key}`);
+    add('warn', dn >= 1 ? tr(L, 'kUnc', {d:dn}) : tr(L, dn === 0 ? 'kUncTot' : 'kUncRec'), det, dn >= 1 ? dn : dn, [key], `unc:${key}`);
   });
 
   const colMap = {...Object.fromEntries(INPUTS.map(k => [k, c.sum[k]])), w20: c.sum.ttc20, wtot: c.sum.tot};
@@ -952,6 +974,7 @@ function inputCell(key, val, cls){
 const other = () => LANG === 'zh' ? 'fr' : 'zh';
 const headCell = (lk, last) => `<th class="${last ? 'gap' : ''}">${t(lk)}<span class="zh">${tr(other(), lk)}</span></th>`;
 function renderSheet(){
+  closePop();
   const n = daysIn(S.month, S.year);
   let lastRow = n; for (let d = n + 1; d <= 31; d++){ const r = S.days[d]; if (INPUTS.some(k => r[k] != null) || r.wtot != null || r.w20 != null) lastRow = d; }
   const used = k => S.showAll || S.col[k] != null || Object.keys(S.uncertain).some(u => u.endsWith('.' + k)) || S.days.some(r => r[k] != null && r[k] !== 0);
@@ -1019,10 +1042,14 @@ function refresh(){
   else if (warn.length){ cls = 'warn'; mark = '✓'; big = t('vWarn'); sub = t('vWarnSub', {n:warn.length}); }
   else { cls = 'ok'; mark = '✓'; big = t('vOk'); sub = t('vOkSub'); }
   const checked = ch.daysVerified ? `<div class="checked">${esc(t('vChecked', {a:ch.daysVerified}))}</div>` : '';
-  const items = [...bad, ...warn].map(x => `<li class="issue-row"><button type="button" class="issue" data-goto="${esc((x.cells && x.cells[0]) || '')}"><span class="chip ${x.level}">${t(x.level === 'bad' ? 'chipBad' : 'chipWarn')}</span><span class="t">${esc(x.title)}</span><span class="d">${esc(x.detail)}</span></button>${x.id && editable ? `<button type="button" class="ackbtn" data-ack="${esc(x.id)}">✓ ${esc(t('ackBtn'))}</button>` : ''}</li>`).join('');
   const ackN = (S.acks || []).length;
-  $('#verdict').innerHTML = `<div class="stack" style="gap:10px"><div class="verdict ${cls}"><span class="mark">${mark}</span><div><div class="big">${esc(big)}</div><div class="small">${esc(sub)}</div>${checked}${ackN ? `<div class="checked">${esc(t('vAcked', {n:ackN}))}</div>` : ''}</div></div>
-    ${items ? `<ul class="issues">${items}</ul>` : ''}</div>`;
+  $('#verdict').innerHTML = `<div class="verdict ${cls}"><span class="mark">${mark}</span><div><div class="big">${esc(big)}</div><div class="small">${esc(sub)}</div>${checked}${ackN ? `<div class="checked">${esc(t('vAcked', {n:ackN}))}</div>` : ''}</div></div>`;
+  issuesShown = [...bad, ...warn];
+  $('#itTodo').textContent = t('tabTodo', {n:issuesShown.length}); $('#itHist').textContent = t('tabHist', {n:ackN});
+  $('#issueTabs').hidden = !issuesShown.length && !ackN;
+  $('#itTodo').setAttribute('aria-selected', issueTab === 'todo'); $('#itHist').setAttribute('aria-selected', issueTab === 'hist');
+  $('#issueList').hidden = issueTab !== 'todo'; $('#ackList').hidden = issueTab !== 'hist';
+  $('#issueList').innerHTML = issuesShown.length ? issuesShown.map((x, i) => `<li><button type="button" class="issue" data-i="${i}"><span class="chip ${x.level}">${t(x.level === 'bad' ? 'chipBad' : 'chipWarn')}</span><span class="t">${esc(x.title)}</span><span class="d">${esc(x.detail)}</span></button></li>`).join('') : (ackN ? `<li class="muted" style="padding:6px 2px">${esc(t('todoEmpty'))}</li>` : '');
   renderAcks();
   const writtenTotal = S.recap.total ?? S.col.wtot;
   const w = (val, comp) => { if (val == null || isNaN(val)) return ''; const good = eq(val, comp); return `<div class="w ${good ? 'ok' : 'bad'}">${esc(t('writtenOnSheet'))} <span class="hand">${fmt(val)}</span> ${good ? '✓' : '≠'}</div>`; };
@@ -1038,12 +1065,12 @@ function refresh(){
   return {c, ch};
 }
 
-function gotoCell(key){
+function gotoCell(key, focus = true){
   if (!key) return;
   const td = document.querySelector(`[data-cell="${CSS.escape(key)}"]`); if (!td) return;
   td.scrollIntoView({block:'center', inline:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   td.classList.remove('flash'); void td.offsetWidth; td.classList.add('flash');
-  const i = td.querySelector('input'); if (i) setTimeout(() => i.focus({preventScroll:true}), 350);
+  const i = td.querySelector('input'); if (i && focus) setTimeout(() => i.focus({preventScroll:true}), 350);
 }
 
 /* ---------- row tools ---------- */
@@ -1451,6 +1478,12 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  kT20:'Jour {d} — total TVA 20 %', kTot:'Jour {d} — total du jour', kNoTot:'Jour {d} — pas de total écrit', kNoDet:'Jour {d} — détail manquant',
+  kHigh:'Jour {d} — {f} inhabituel', kLow:'Jour {d} — {f} très bas', kUnc:'Jour {d} — lecture incertaine', kUncTot:'Total — lecture incertaine', kUncRec:'Récap — lecture incertaine',
+  kCol:'Ligne des totaux — {f}', kColOk:'Ligne des totaux — {f} : {v}', kRec:'Récap — {f}', kRecOk:'Récap — {f} : {v}', kRecAdd:'Récap — addition',
+  popUnc:'Quel est le bon chiffre ?', popFix:'ou tapez le bon chiffre dans la case', popChose:'{v} retenu', popKept:'{v} confirmé',
+  tabTodo:'À vérifier ({n})', tabHist:'Historique des erreurs ({n})', histEmpty:"Aucune erreur vérifiée pour ce mois.", todoEmpty:'Rien à vérifier.',
+  dashAckTitle:'Historique des erreurs', ackBtn:"C'est vérifié",
   ackBtn:"C'est vérifié", ackedTitle:'Points vérifiés ({n})', ackedOn:'vérifié le {d}', unack:'Rouvrir', dashAckTitle:'Points vérifiés', vAcked:'{n} point(s) vérifié(s) à la main',
   msExists:"Ce mois a déjà des chiffres dans le tableau de bord. Vous verrez d'abord le résultat : rien ne sera remplacé tant que vous n'aurez pas validé.",
   msContinue:"Voir le résultat d'abord", msExistsMove:'Ce mois a déjà des chiffres : ils seront remplacés par ceux-ci.',
@@ -1496,6 +1529,12 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  kT20:'{d} 号 — 20% 税合计', kTot:'{d} 号 — 当天合计', kNoTot:'{d} 号 — 没有手写合计', kNoDet:'{d} 号 — 缺少明细',
+  kHigh:'{d} 号 — {f}不寻常', kLow:'{d} 号 — {f}特别低', kUnc:'{d} 号 — 看不清', kUncTot:'合计 — 看不清', kUncRec:'总数 — 看不清',
+  kCol:'合计行 — {f}', kColOk:'合计行 — {f}：{v}', kRec:'总数 — {f}', kRecOk:'总数 — {f}：{v}', kRecAdd:'总数 — 加法',
+  popUnc:'哪个数字是对的？', popFix:'或者在格子里输入正确的数字', popChose:'选了 {v}', popKept:'确认是 {v}',
+  tabTodo:'需要检查（{n}）', tabHist:'错误记录（{n}）', histEmpty:'这个月还没有核对过的错误。', todoEmpty:'没有需要检查的。',
+  dashAckTitle:'错误记录', ackBtn:'已核对',
   ackBtn:'已核对', ackedTitle:'已核对的问题（{n}）', ackedOn:'核对于 {d}', unack:'撤回', dashAckTitle:'已核对的问题', vAcked:'{n} 处已手动核对',
   msExists:'总览里这个月份已经有数据了。会先显示识别结果，在您确认之前不会替换。',
   msContinue:'先看结果', msExistsMove:'这个月份已经有数据，会被这里的数字替换。',
@@ -1684,6 +1723,7 @@ function updResumeDraft(){
 
 /* ---------- views ---------- */
 function showStep(which){
+  closePop();
   ['Photo','Review','Dash','Settings'].forEach(n => { $('#step' + n).hidden = which !== n.toLowerCase(); });
   $('#bar').hidden = which !== 'review';
   const tab = which === 'dash' ? 'dash' : which === 'settings' ? null : 'photo';
@@ -1988,9 +2028,8 @@ function histInfo(){
 function ackDate(at){ return new Date(at).toLocaleString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {dateStyle:'short', timeStyle:'short'}); }
 function renderAcks(){
   const acks = (S && S.acks) || [];
-  $('#ackBox').hidden = !acks.length;
-  $('#ackSummary').textContent = t('ackedTitle', {n:acks.length});
-  $('#ackList').innerHTML = acks.slice().sort((a, b) => b.at - a.at).map(a => { const tx = a[LANG] || a.fr; return `<li><div><b>${esc(tx.t)}</b><br><span class="muted">${esc(tx.d)}</span><br><span class="small muted">${esc(t('ackedOn', {d:ackDate(a.at)}))}</span></div>${editable ? `<button type="button" class="linkbtn" data-unack="${esc(a.id)}">${esc(t('unack'))}</button>` : ''}</li>`; }).join('');
+  $('#ackList').innerHTML = acks.length ? acks.slice().sort((a, b) => b.at - a.at).map(a => { const tx = a[LANG] || a.fr; return `<li><div><b>${esc(tx.t)}</b><br><span class="muted">${esc(tx.d)}</span>${a.choice ? `<br><b class="ok-t">${esc(a.choice === 'alt' ? t('popChose', {v:fmt(a.value)}) : t('popKept', {v:fmt(a.value)}))}</b>` : ''}<br><span class="small muted">${esc(t('ackedOn', {d:ackDate(a.at)}))}</span></div>${editable ? `<button type="button" class="linkbtn" data-unack="${esc(a.id)}">${esc(t('unack'))}</button>` : ''}</li>`; }).join('')
+    : `<li class="muted">${esc(t('histEmpty'))}</li>`;
 }
 
 /* ---------- issues marked as checked ("c'est vérifié") ---------- */
@@ -2006,6 +2045,57 @@ function activeIssues(c = calc()){
   live.forEach(x => (x.cells || []).forEach(k => (x.level === 'bad' ? cellsBad : x.level === 'warn' ? cellsWarn : null)?.add(k)));
   return {list, live, cellsBad, cellsWarn, daysVerified: ch.daysVerified, sig};
 }
+let issuesShown = [], issueTab = 'todo', popIssue = null, popUKey = null;
+function closePop(){ $('#pop').hidden = true; popIssue = null; }
+function openIssue(x, anchorEl){
+  closePop();
+  const key = x.cells && x.cells[0];
+  const td = key ? document.querySelector(`[data-cell="${CSS.escape(key)}"]`) : null;
+  if (td) gotoCell(key, false);
+  popIssue = x;
+  $('#popT').textContent = x.title; $('#popD').textContent = x.detail;
+  // An uncertain reading (on its own, or behind a day whose sum fails) is offered as a choice between the two numbers.
+  const isUnc = x.id && x.id.startsWith('unc:');
+  const uKey = isUnc ? x.id.slice(4) : (x.cells || []).find(k => S.uncertain[k] && S.uncertain[k].a != null);
+  const u = uKey ? S.uncertain[uKey] : null;
+  popUKey = uKey && u && u.a != null ? uKey : null;
+  let html = '';
+  if (editable && popUKey){
+    const cur = cellValue(popUKey);
+    if (isUnc) $('#popD').textContent = t('popUnc');
+    html = `<button type="button" class="btn ok" data-pop="keep">✓ ${fmt(cur ?? u.r ?? 0)}</button><button type="button" class="btn" data-pop="alt">${fmt(u.a)}</button>`;
+    if (!isUnc && x.id) html += `<button type="button" class="btn ok wide" data-pop="ack">✓ ${esc(t('ackBtn'))}</button>`;
+  } else if (editable && x.id){
+    html = `<button type="button" class="btn ok" data-pop="ack">✓ ${esc(t('ackBtn'))}</button>`;
+  }
+  $('#popB').innerHTML = html;
+  const inputHere = td && td.querySelector('input');
+  $('#popN').hidden = !(editable && inputHere); $('#popN').textContent = t('popFix');
+  const place = () => {
+    if (popIssue !== x) return;
+    const pop = $('#pop'); pop.hidden = false;
+    const el = td || anchorEl; const r = el.getBoundingClientRect(), w = pop.offsetWidth, vw = document.documentElement.clientWidth;
+    let left = r.left + window.scrollX + r.width / 2 - w / 2; left = Math.max(12 + window.scrollX, Math.min(left, window.scrollX + vw - w - 12));
+    pop.style.left = left + 'px'; pop.style.top = (r.bottom + window.scrollY + 8) + 'px';
+  };
+  setTimeout(place, td ? 420 : 0);
+}
+function cellValue(key){ const [d, k] = key.split('.'); const dn = +d; return dn >= 1 ? S.days[dn][k] : dn === 0 ? S.col[k] : S.recap[k]; }
+function setCellValue(key, v){ const [d, k] = key.split('.'); const dn = +d; if (dn >= 1) S.days[dn][k] = v; else if (dn === 0) S.col[k] = v; else S.recap[k] = v; }
+function resolveUncertain(x, choice){
+  if (!editable) return;
+  const key = x.id.slice(4), u = S.uncertain[key]; if (!u) return;
+  const c = calc(), fr = checks(c, 'fr').list.find(y => y.id === x.id), zh = checks(c, 'zh').list.find(y => y.id === x.id);
+  snapshot();
+  const prev = cellValue(key), value = choice === 'alt' ? u.a : (prev ?? u.r);
+  if (choice === 'alt') setCellValue(key, u.a);
+  delete S.uncertain[key];
+  S.acks = S.acks || [];
+  S.acks.push({id:x.id + '@' + Date.now(), kind:'unc', key, choice, value, prev, unc:u, at:Date.now(), fr:{t:fr ? fr.title : x.title, d:fr ? fr.detail : x.detail}, zh:{t:zh ? zh.title : x.title, d:zh ? zh.detail : x.detail}});
+  closePop();
+  if (choice === 'alt') renderSheet();
+  changed();
+}
 function ackIssue(id){
   if (!editable || !S) return;
   const c = calc(), fr = checks(c, 'fr').list.find(x => x.id === id), zh = checks(c, 'zh').list.find(x => x.id === id);
@@ -2013,9 +2103,17 @@ function ackIssue(id){
   snapshot();
   S.acks = (S.acks || []).filter(a => a.id !== id);
   S.acks.push({id, sig:fr.detail, level:fr.level, at:Date.now(), fr:{t:fr.title, d:fr.detail}, zh:{t:zh ? zh.title : fr.title, d:zh ? zh.detail : fr.detail}});
+  closePop();
   changed();
 }
-function unackIssue(id){ if (!editable || !S) return; snapshot(); S.acks = (S.acks || []).filter(a => a.id !== id); changed(); }
+function unackIssue(id){
+  if (!editable || !S) return;
+  const a = (S.acks || []).find(x => x.id === id); if (!a) return;
+  snapshot();
+  if (a.kind === 'unc'){ S.uncertain[a.key] = a.unc; if (a.choice === 'alt') setCellValue(a.key, a.prev); renderSheet(); }
+  S.acks = S.acks.filter(x => x.id !== id);
+  changed();
+}
 
 /* ---------- static text ---------- */
 function applyLang(){
@@ -2138,10 +2236,17 @@ function init(){
     e.preventDefault(); const [d, k] = e.target.dataset.key.split('.');
     const next = document.querySelector(`[data-key="${+d + 1}.${k}"]`); if (next) next.focus(); else e.target.blur();
   });
-  $('#verdict').addEventListener('click', e => {
-    const a = e.target.closest('[data-ack]'); if (a){ ackIssue(a.dataset.ack); return; }
-    const b = e.target.closest('[data-goto]'); if (b) gotoCell(b.dataset.goto);
+  $('#issueList').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) openIssue(issuesShown[+b.dataset.i], b); });
+  $('#itTodo').addEventListener('click', () => { issueTab = 'todo'; closePop(); refresh(); });
+  $('#itHist').addEventListener('click', () => { issueTab = 'hist'; closePop(); refresh(); });
+  $('#popX').addEventListener('click', closePop);
+  $('#popB').addEventListener('click', e => {
+    const b = e.target.closest('[data-pop]'); if (!b || !popIssue) return;
+    if (b.dataset.pop === 'ack') ackIssue(popIssue.id);
+    else if (popUKey) resolveUncertain({id:'unc:' + popUKey, title:popIssue.title, detail:popIssue.detail}, b.dataset.pop);
   });
+  document.addEventListener('click', e => { if (!$('#pop').hidden && !e.target.closest('#pop') && !e.target.closest('[data-i]')) closePop(); }, true);
+  window.addEventListener('resize', closePop);
   $('#ackList').addEventListener('click', e => { const u = e.target.closest('[data-unack]'); if (u) unackIssue(u.dataset.unack); });
   // PDF (no Excel)
   $('#btnPdf').addEventListener('click', () => { warnBefore(); saveFile(buildPdf()); });
