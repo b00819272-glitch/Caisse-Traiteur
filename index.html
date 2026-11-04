@@ -292,12 +292,15 @@ details.card[open] summary{margin-bottom:12px}
 .selbar .in{max-width:760px;margin:0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
 .selbar .btn{flex:1;min-height:52px;font-size:17px;white-space:nowrap;padding:10px 8px}
 .selcount{font-weight:600;color:var(--warn)}
+.notes{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:15px}
 .tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
 .tabs button{border:0;background:transparent;border-radius:10px;min-height:48px;font-weight:600;font-size:17px;color:var(--muted);cursor:pointer;font-family:var(--body)}
 .tabs button[aria-selected="true"]{background:var(--ink);color:var(--card)}
 .corrband{position:sticky;top:0;z-index:30;background:var(--bad);color:var(--card);display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:600;font-size:15px;
   padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .corrband .linkbtn{color:var(--card);padding:6px 4px;min-height:36px}
+.lockband .lockbtn{margin-left:auto;min-height:40px;padding:8px 14px;border-color:var(--warn);color:var(--warn);background:var(--card);flex:none}
+.lockband.open{background:var(--bad-bg);color:var(--bad)} .lockband.open .lockbtn{border-color:var(--bad);color:var(--bad)}
 .lockband{display:flex;gap:10px;align-items:center;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:12px 14px;font-weight:600}
 .sheet input:disabled{color:var(--text);-webkit-text-fill-color:var(--text);opacity:1}
 .sheet button:disabled{cursor:default;text-decoration:none}
@@ -313,8 +316,8 @@ details.card[open] summary{margin-bottom:12px}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px}
 .seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-weight:600;color:var(--muted);cursor:pointer;min-height:36px;font-family:var(--body);font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--ink-soft);color:var(--ink)}
-.chart-wrap{overflow:hidden;width:100%}
-#chart{display:block;width:100%;height:auto}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%}
+#chart{display:block;max-width:none}
 #chart .val.in{fill:#fff;font-weight:600}
 #chart .yr{font-weight:600;fill:var(--text)}
 #chart .sep{stroke:var(--rule);stroke-width:1}
@@ -421,7 +424,8 @@ label.btn{cursor:pointer}
     </div>
     <div class="lockband" id="lockBand" hidden>
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-      <span data-t="lockedRead">Mois de plus de 6 mois : consultation seulement.</span>
+      <span id="lockText"></span>
+      <button type="button" class="btn lockbtn" id="btnUnlock" hidden></button>
     </div>
 
     <div class="draftband" id="draftBand" hidden></div>
@@ -455,7 +459,7 @@ label.btn{cursor:pointer}
 
     <div class="card stack" id="notesCard" hidden>
       <p class="eyebrow" style="margin:0" data-t="notesTitle">Remarques de la lecture</p>
-      <p id="notes" style="margin:0"></p>
+      <ul class="notes" id="notes"></ul>
     </div>
 
     <button class="btn primary block" id="btnDone" type="button" data-t="done">Terminé, voir le tableau de bord</button>
@@ -530,7 +534,7 @@ label.btn{cursor:pointer}
       <p class="note" data-t="histNote"></p>
     </div>
     <button class="btn ghost" id="btnCloseSettings" type="button" data-t="close">Fermer</button>
-    <details class="corrbox">
+    <details class="corrbox" hidden>
       <summary data-t="corrLink">Mode correction</summary>
       <div class="stack" style="gap:10px;margin-top:10px">
         <p class="muted small" style="margin:0" data-t="corrExplain"></p>
@@ -1098,7 +1102,8 @@ function refresh(){
     + (c.sum.cheques || S.recap.cheques != null ? fig('', t('figChq'), c.sum.cheques, w(S.recap.cheques, c.sum.cheques)) : '')
     + (c.sum.tickets || S.recap.tickets != null ? fig('', t('figTk'), c.sum.tickets, w(S.recap.tickets, c.sum.tickets)) : '');
   if (bad.some(x => x.day === -1)) $('#recapBox').open = true;
-  $('#notesCard').hidden = !S.notes; $('#notes').textContent = S.notes || '';
+  const notes = Array.isArray(S.notes) ? S.notes : String(S.notes || '').replace(/([.;。；])\s*(?=[A-ZÀ-Ü0-9«\u4e00-\u9fff])/g, '$1\n').split(/\n+/).map(x => x.trim()).filter(Boolean);
+  $('#notesCard').hidden = !notes.length; $('#notes').innerHTML = notes.map(x => `<li>${esc(x)}</li>`).join('');
   return {c, ch};
 }
 
@@ -1247,12 +1252,12 @@ OUTPUT: exactly one compact JSON object (no markdown fences, no comments, no ext
  "totals_row":[null,77.8,null,null,77.8,null,19148.84,306.19,null,19532.83],
  "recap":{"card":19226.64,"cash":306.19,"cheques":null,"tickets":null,"total":19532.83},
  "uncertain":[[16,"cb10",799.48,793.48]],
- "notes":"..."}
+ "notes":["...","..."]}
 Each "days" row is exactly: [day, closed (1 or 0), cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total].
 "totals_row" is the written column-totals row: [cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total] (null where nothing is written).
 The numbers above only illustrate the format. Put one row in "days" for every day row of the sheet, closed days included (closed 1, values null).
 Each "uncertain" entry is [day, field, reading, alternative]; field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
-const prompt = (n = 1) => PROMPT_BASE
+const prompt = (n = 1) => PROMPT_BASE + `\n"notes" is a list of very short remarks (one fact per item, at most 6 items).`
   + (n > 1 ? `\n\nIMAGES: image 1 is the whole sheet (use it to see which row and column each number is in). Images 2 and 3 are sharper zooms of the top part and the bottom part of the same sheet (they overlap in the middle): use them to read the digits precisely.` : '')
   + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
 
@@ -1457,7 +1462,7 @@ function applyReading(j){
     if (a == null || isNaN(a) || (r != null && eq(r, a))) return;
     S.uncertain[`${d}.${k}`] = {r: r != null && !isNaN(r) ? r : null, a: a != null && !isNaN(a) ? a : null};
   });
-  S.notes = typeof j.notes === 'string' ? j.notes.trim() : '';
+  S.notes = Array.isArray(j.notes) ? j.notes.map(x => String(x).trim()).filter(Boolean) : (typeof j.notes === 'string' ? j.notes.trim() : '');
   return {monthRead, yearRead};
 }
 
@@ -1553,6 +1558,9 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  lockText:'Mois verrouillé (plus de 6 mois).', lockedRead:'Mois verrouillé (plus de 6 mois) : consultation seulement.', lockOpenText:'Mois déverrouillé : chaque modification est notée.',
+  unlock:'Modifier', relock:'Reverrouiller', unlockTitle:'Modifier {m} ?', unlockBody:"Ce mois a plus de 6 mois. Les modifications seront notées dans le tableau de bord, avec l'ancien et le nouveau total.", unlockYes:'Oui, modifier',
+  chartTitle:"Chiffre d'affaires mensuel (€)",
   msExists:'Ce mois a déjà des données.', msContinue:'Valider', msExistsMove:'Ce mois a déjà des données : elles seront remplacées.',
   msNotRead:'Vérifiez le mois.', msTitleManual:'Remplir un mois à la main ?', msManual:'Sans photo, tout est à taper. Choisissez le mois puis validez.',
   draftBand:'{m} a déjà des données. Rien ne change avant « Valider et remplacer » en bas.',
@@ -1575,9 +1583,9 @@ Object.assign(I18N.fr, {
   recapHelp:'Lus sur la feuille, pour le contrôle. Ils ne se modifient pas.',
   tabPhoto:'Nouveau mois', tabDash:'Tableau de bord',
   corrBand:'Mode correction : les mois verrouillés sont modifiables', corrOff:'Quitter',
-  lockedRead:'Mois de plus de 6 mois : verrouillé, consultation seulement.', done:'Terminé',
+  done:'Terminé',
   dashEmptyT:"Pas encore d'historique", dashEmptyD:"Prenez la photo d'un mois, ou importez le fichier d'historique dans les réglages.",
-  chartTitle:"Chiffre d'affaires mensuel", rng12:'12 mois', rngAll:'Tout',
+  rng12:'12 mois', rngAll:'Tout',
   chartHelp:"Touchez une barre pour voir le mois et sa photo. Le pourcentage compare au même mois de l'année d'avant.",
   monthsTitle:'Tous les mois', lockRule:'Les mois de plus de 6 mois sont verrouillés (cadenas) : on peut les consulter, pas les modifier.',
   logTitle:"Corrections de l'historique", logLine:'{d} · {m} : total {a} → {b}',
@@ -1607,6 +1615,9 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  lockText:'已锁定（超过 6 个月）。', lockedRead:'已锁定（超过 6 个月），只能查看。', lockOpenText:'已解锁：每次修改都会记录。',
+  unlock:'修改', relock:'重新锁定', unlockTitle:'修改 {m}？', unlockBody:'这个月份超过 6 个月。修改会记录在总览里，包括原来和新的总额。', unlockYes:'确定修改',
+  chartTitle:'每月营业额（€）',
   msExists:'这个月已经有数据了。', msContinue:'确定', msExistsMove:'这个月已经有数据，会被替换。',
   msNotRead:'请确认月份。', msTitleManual:'手动填写一个月？', msManual:'没有照片，需要手动输入所有数字。选好月份后点确定。',
   draftBand:'{m} 已经有数据。在点最下面的“确认并替换”之前不会改变。',
@@ -1629,9 +1640,9 @@ Object.assign(I18N.zh, {
   recapHelp:'从纸上读到的，只用来核对，不能修改。',
   tabPhoto:'新的月份', tabDash:'总览',
   corrBand:'修改模式：锁定的月份现在可以修改', corrOff:'退出',
-  lockedRead:'超过 6 个月的月份已锁定，只能查看。', done:'完成',
+  done:'完成',
   dashEmptyT:'还没有记录', dashEmptyD:'先拍一个月的表，或者在设置里导入历史文件。',
-  chartTitle:'每月营业额', rng12:'12 个月', rngAll:'全部',
+  rng12:'12 个月', rngAll:'全部',
   chartHelp:'点柱子可以看这个月和照片。百分比是和去年同月相比。',
   monthsTitle:'所有月份', lockRule:'超过 6 个月的月份会锁定（锁的图标）：可以查看，不能修改。',
   logTitle:'历史修改记录', logLine:'{d} · {m}：总额 {a} → {b}',
@@ -1692,7 +1703,8 @@ let corrUntil = (() => { try { return +sessionStorage.getItem('caisse-corr') || 
 let corrSessionId = corrUntil ? corrUntil : 0;
 const corrOn = () => Date.now() < corrUntil;
 let viewerCanEdit = true; // claude.ai: only the page's Editors / owner may open correction mode
-const canEdit = (m, y) => !isLockedM(m, y) || (corrOn() && viewerCanEdit);
+let unlockedKey = null; // a locked month opened for changes after confirmation (until another month is opened)
+const canEdit = (m, y) => !isLockedM(m, y) || (viewerCanEdit && (corrOn() || unlockedKey === keyOf(m, y)));
 let editable = true, openTotal = null;
 function setCorr(on){
   corrUntil = on ? Date.now() + 15 * 60 * 1000 : 0; corrSessionId = on ? Date.now() : 0;
@@ -1872,6 +1884,7 @@ function updResumeDraft(){
 
 /* ---------- views ---------- */
 function showStep(which){
+  if (which !== 'review') unlockedKey = null;
   closePop(); sel = null; if ($('#selBar')) $('#selBar').hidden = true;
   ['Photo','Review','Dash','Settings'].forEach(n => { $('#step' + n).hidden = which !== n.toLowerCase(); });
   $('#bar').hidden = which !== 'review';
@@ -1887,7 +1900,13 @@ function applyEditable(){
     $('#draftBand').textContent = t('draftBand', {m:monthYear(S.month, S.year), t: old ? fmt(calc(Object.assign(newState(S.month, S.year), old)).sum.tot) : '0'});
     $('#btnValidate').textContent = t('validate', {m:monthYear(S.month, S.year)});
   }
-  $('#lockBand').hidden = editable; $('#btnMonthEdit').hidden = !editable;
+  const locked = !!(S && S.key && isLockedM(S.month, S.year));
+  $('#lockBand').hidden = !locked;
+  $('#lockBand').classList.toggle('open', locked && editable);
+  $('#lockText').textContent = !locked ? '' : editable ? t('lockOpenText') : t(viewerCanEdit ? 'lockText' : 'lockedRead');
+  $('#btnUnlock').hidden = !locked || !viewerCanEdit;
+  $('#btnUnlock').textContent = editable ? t('relock') : t('unlock');
+  $('#btnMonthEdit').hidden = !editable;
   $('#btnUndo').hidden = !editable; $('#tableHelp').hidden = !editable;
 }
 function openReview(){
@@ -1904,6 +1923,7 @@ function openReview(){
 }
 function resetPhotoStep(){ $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false; $('#btnRetry').hidden = true; setStatus(null); }
 async function openMonth(key){
+  unlockedKey = null;
   const st = H.months[key]; if (!st) return;
   S = Object.assign(newState(st.month, st.year), clone(st)); S.key = key;
   if (photo.url) URL.revokeObjectURL(photo.url);
@@ -2060,62 +2080,37 @@ function renderDash(){
   $('#kpis').innerHTML = `
     <div class="k1"><div class="l">${esc(t('kLast', {m:monthYear(last.m, last.y)}))}</div><div class="v">${fmt0(last.tot)} €</div>
       ${yl == null ? `<span class="delta flat">${esc(t('noCompare'))}</span>` : `${chip(yl)}${esc(t('chipYoY', {p:pct(yl), m:monthYear(last.m, last.y - 1)}))}</span>`}</div>
-    <div><div class="l">${esc(t('kYtd', {y:last.y, r:range}))}</div><div class="v">${fmt0(ytdSum)}</div>${ytdP == null ? '' : `${chip(ytdP)}${esc(t('chipYtd', {p:pct(ytdP), y:last.y - 1}))}</span>`}</div>
-    <div><div class="l">${esc(t('kAvg'))}</div><div class="v">${fmt0(avg)}</div></div>`;
+    <div><div class="l">${esc(t('kYtd', {y:last.y, r:range}))}</div><div class="v">${fmt0(ytdSum)} €</div>${ytdP == null ? '' : `${chip(ytdP)}${esc(t('chipYtd', {p:pct(ytdP), y:last.y - 1}))}</span>`}</div>
+    <div><div class="l">${esc(t('kAvg'))}</div><div class="v">${fmt0(avg)} €</div></div>`;
   // chart
   const endI = mIdx(last.m, last.y), startI = dashRange === 12 ? Math.max(endI - 11, mIdx(rows[0].m, rows[0].y)) : mIdx(rows[0].m, rows[0].y);
   const slots = []; for (let i = startI; i <= endI; i++){ const y = Math.floor(i / 12), m = i % 12 + 1; slots.push({m, y, r:map[keyOf(m, y)]}); }
   // The chart always fits the card: no sideways scrolling. Labels adapt to the room each bar gets.
-  const wrapW = Math.max(260, Math.floor($('#chartWrap').getBoundingClientRect().width) || 340);
-  const n = slots.length, padX = 4, step = (wrapW - padX * 2) / n;
-  const wide = step >= 54, mid = step >= 26;
-  const barW = Math.max(4, Math.min(38, step * (wide ? 0.68 : 0.72)));
-  const top = wide ? 50 : 62, plotH = wide ? 190 : 200, base = top + plotH, H2 = base + (mid ? 38 : 44);
-  const fsV = wide ? 11 : mid ? 10 : 8.5, fsY = wide ? 12 : mid ? 10 : 9;
+  const boxW = Math.max(260, Math.floor($('#chartWrap').getBoundingClientRect().width) || 340);
+  const n = slots.length, padX = 4, step = Math.max(58, (boxW - padX * 2) / n), wrapW = Math.round(step * n + padX * 2);
+  const barW = Math.max(4, Math.min(38, step * 0.68));
+  const top = 50, plotH = 190, base = top + plotH, H2 = base + 38;
   const max = Math.max(...slots.map(s => s.r ? s.r.tot : 0), 1);
   const yoyCls = p => p > 0.0005 ? 'up' : p < -0.0005 ? 'down' : '';
-  const pctShort = p => (p > 0 ? '+' : p < 0 ? '−' : '') + Math.round(Math.abs(p * 100)) + (LANG === 'zh' ? '%' : ' %');
-  const vtext = (cls, x, y, txt, fs) => `<text class="${cls}" x="${x}" y="${y}" transform="rotate(-90 ${x} ${y})" dominant-baseline="central" style="font-size:${fs}px">${esc(txt)}</text>`;
   let g = `<line class="base" x1="${padX}" x2="${wrapW - padX}" y1="${base + .5}" y2="${base + .5}"/>`;
   slots.forEach((s, i) => {
     const cx = padX + step * i + step / 2, x = cx - barW / 2;
-    const monthTxt = mid ? shortMonth(s.m) : (LANG === 'zh' ? String(s.m) : shortMonth(s.m).charAt(0).toUpperCase());
-    let lab = `<text class="ax" x="${cx}" y="${base + 15}" text-anchor="middle" style="font-size:${fsY}px">${esc(monthTxt)}</text>`;
-    if (mid) lab += `<text class="ax yr" x="${cx}" y="${base + 30}" text-anchor="middle" style="font-size:${fsY}px">${s.y}</text>`;
+    const lab = `<text class="ax" x="${cx}" y="${base + 15}" text-anchor="middle">${esc(shortMonth(s.m))}</text>`
+      + `<text class="ax yr" x="${cx}" y="${base + 30}" text-anchor="middle">${s.y}</text>`;
     if (!s.r){ g += `<rect class="missing" x="${x}" y="${base - 24}" width="${barW}" height="24" rx="4"/><text x="${cx}" y="${base - 30}" text-anchor="middle">?</text>${lab}`; return; }
     const h = Math.max(2, s.r.tot / max * plotH), y = base - h, rr = Math.min(4, h / 2, barW / 2);
     const p = yoyOf(map, s.r);
     const path = `M${x},${base} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + barW - rr} Q${x + barW},${y} ${x + barW},${y + rr} V${base} Z`;
-    let labels = '';
-    if (wide){
-      labels = `<text class="val" x="${cx}" y="${y - 6}" text-anchor="middle">${fmt0(s.r.tot)}</text>`
-        + (p == null ? '' : `<text class="yoy ${yoyCls(p)}" x="${cx}" y="${y - 22}" text-anchor="middle">${esc(pct(p))}</text>`);
-    } else {
-      // values written upwards: inside the bar when it is tall enough, otherwise just above it
-      const v = fmt0(s.r.tot), vLen = v.length * fsV * 0.62 + 8;
-      let above = y - 4;
-      if (h > vLen + 6 && barW >= fsV + 2) labels += vtext('val in', cx, base - 6, v, fsV).replace('<text', '<text text-anchor="start"');
-      else { labels += vtext('val', cx, above, v, fsV).replace('<text', '<text text-anchor="start"'); above -= vLen; }
-      if (p != null) labels += vtext('yoy ' + yoyCls(p), cx, above, pctShort(p), fsV).replace('<text', '<text text-anchor="start"');
-    }
+    const labels = `<text class="val" x="${cx}" y="${y - 6}" text-anchor="middle">${fmt0(s.r.tot)}</text>`
+      + (p == null ? '' : `<text class="yoy ${yoyCls(p)}" x="${cx}" y="${y - 22}" text-anchor="middle">${esc(pct(p))}</text>`);
     g += `<g class="bar-g" tabindex="0" role="button" data-k="${s.r.k}" aria-label="${esc(monthYear(s.m, s.y))} ${fmt0(s.r.tot)} €${p == null ? '' : ', ' + pct(p)}">
       <rect class="hit" x="${cx - step / 2}" y="0" width="${step}" height="${base}" fill="transparent"/>
       <path class="bar-r" d="${path}"/>${labels}
     </g>${lab}`;
   });
-  // very narrow bars: one year label under each year's months
-  if (!mid){
-    let i = 0;
-    while (i < n){
-      let j = i; while (j + 1 < n && slots[j + 1].y === slots[i].y) j++;
-      const x1 = padX + step * i, x2 = padX + step * (j + 1);
-      g += `<text class="ax yr" x="${(x1 + x2) / 2}" y="${base + 34}" text-anchor="middle" style="font-size:11px">${slots[i].y}</text>`;
-      if (i > 0) g += `<line class="sep" x1="${x1}" x2="${x1}" y1="${base + 4}" y2="${base + 40}"/>`;
-      i = j + 1;
-    }
-  }
-  const svg = $('#chart'); svg.setAttribute('viewBox', `0 0 ${wrapW} ${H2}`); svg.setAttribute('width', '100%'); svg.removeAttribute('height');
+  const svg = $('#chart'); svg.setAttribute('viewBox', `0 0 ${wrapW} ${H2}`); svg.setAttribute('width', wrapW); svg.setAttribute('height', H2);
   svg.setAttribute('aria-label', t('chartTitle')); svg.innerHTML = g;
+  requestAnimationFrame(() => { $('#chartWrap').scrollLeft = 99999; });
   $('#rng12').setAttribute('aria-pressed', dashRange === 12); $('#rngAll').setAttribute('aria-pressed', dashRange !== 12);
   // month list (newest first)
   $('#mlist').innerHTML = rows.slice().reverse().map(r => { const p = yoyOf(map, r); return `<li><button type="button" data-k="${r.k}">
@@ -2216,6 +2211,16 @@ function activeIssues(c = calc()){
   return {list, live, cellsBad, cellsWarn, daysVerified: ch.daysVerified, sig};
 }
 let issuesShown = [], issueTab = 'todo', popIssue = null, popUKey = null;
+let cfResolve = null;
+function askConfirm(title, body, yes, warn){
+  return new Promise(res => {
+    cfResolve = res;
+    $('#cfTitle').textContent = title; $('#cfBody').textContent = body; $('#cfYes').textContent = yes;
+    $('#cfBad').hidden = !warn; $('#cfBad').textContent = warn || '';
+    $('#confirmSheet').hidden = false; $('#cfNo').focus();
+  });
+}
+function cfFinish(v){ $('#confirmSheet').hidden = true; const r = cfResolve; cfResolve = null; if (r) r(v); }
 function closePop(){ $('#pop').hidden = true; popIssue = null; }
 function openIssue(x, anchorEl){
   closePop();
@@ -2350,16 +2355,24 @@ function init(){
   $('#btnManual').addEventListener('click', startManual);
   $('#btnMonthEdit').addEventListener('click', moveMonth);
   $('#btnDone').addEventListener('click', () => { saveMonth(); renderDash(); showStep('dash'); });
-  $('#btnValidate').addEventListener('click', () => {
+  $('#btnValidate').addEventListener('click', async () => {
     const old = H.months[S.key]; const bad = activeIssues().live.filter(x => x.level === 'bad').length;
-    $('#cfTitle').textContent = t('cfTitle', {m:monthYear(S.month, S.year)});
-    $('#cfBody').textContent = t('cfBody', {m:monthYear(S.month, S.year), a: old ? fmt(calc(Object.assign(newState(S.month, S.year), old)).sum.tot) : '0', b: fmt(calc().sum.tot)});
-    $('#cfBad').hidden = !bad; $('#cfBad').textContent = t('cfBad', {n:bad});
-    $('#confirmSheet').hidden = false; $('#cfNo').focus();
+    const ok = await askConfirm(t('cfTitle', {m:monthYear(S.month, S.year)}),
+      t('cfBody', {m:monthYear(S.month, S.year), a: old ? fmt(calc(Object.assign(newState(S.month, S.year), old)).sum.tot) : '0', b: fmt(calc().sum.tot)}),
+      t('cfYes'), bad ? t('cfBad', {n:bad}) : '');
+    if (ok) await validateDraft();
   });
-  $('#cfNo').addEventListener('click', () => { $('#confirmSheet').hidden = true; });
-  $('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet') $('#confirmSheet').hidden = true; });
-  $('#cfYes').addEventListener('click', async () => { $('#confirmSheet').hidden = true; await validateDraft(); });
+  $('#cfNo').addEventListener('click', () => cfFinish(false));
+  $('#confirmSheet').addEventListener('click', e => { if (e.target.id === 'confirmSheet') cfFinish(false); });
+  $('#cfYes').addEventListener('click', () => cfFinish(true));
+  $('#btnUnlock').addEventListener('click', async () => {
+    if (!S || !viewerCanEdit) return;
+    if (editable){ unlockedKey = null; editable = canEdit(S.month, S.year); applyEditable(); renderSheet(); refresh(); return; }
+    const ok = await askConfirm(t('unlockTitle', {m:monthYear(S.month, S.year)}), t('unlockBody'), t('unlockYes'), '');
+    if (!ok) return;
+    unlockedKey = S.key; corrSessionId = Date.now(); openTotal = calc(S).sum.tot;
+    editable = canEdit(S.month, S.year); applyEditable(); renderSheet(); refresh();
+  });
   $('#btnDiscard').addEventListener('click', async () => { await dropDraft(); S = null; toast(t('tDraftDropped')); updResumeDraft(); resetPhotoStep(); showStep('photo'); });
   $('#btnResumeDraft').addEventListener('click', resumeDraft);
   $('#btnViewPhoto').addEventListener('click', () => openPhoto(photo));
@@ -2472,7 +2485,7 @@ function init(){
   if (inClaude){
     claude.use('user').then(async u => {
       viewerCanEdit = !!(u && ((await u.canEdit()) || (await u.isOwner())));
-      document.querySelector('.corrbox').hidden = !viewerCanEdit;
+      if (S && !$('#stepReview').hidden) applyEditable();
       if (!viewerCanEdit && corrOn()) setCorr(false);
     });
     claude.use('sample').then(async s => {
