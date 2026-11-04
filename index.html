@@ -1054,11 +1054,19 @@ async function prepImage(file, maxSide){
   let src;
   try { src = await createImageBitmap(file, {imageOrientation:'from-image'}); }
   catch(e){ src = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(t('errImg'))); im.src = URL.createObjectURL(file); }); }
-  const w = src.width, h = src.height, s = Math.min(1, maxSide / Math.max(w, h));
-  const cv = document.createElement('canvas'); cv.width = Math.round(w * s); cv.height = Math.round(h * s);
-  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
-  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.88));
-  return {blob, w: cv.width, h: cv.height};
+  const w = src.width, h = src.height;
+  const jpeg = async (sx, sy, sw, sh, max) => {
+    const k = Math.min(1, max / Math.max(sw, sh));
+    const cv = document.createElement('canvas'); cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+    cv.getContext('2d').drawImage(src, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
+    return {b: await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.88)), w: cv.width, h: cv.height};
+  };
+  const full = await jpeg(0, 0, w, h, maxSide);
+  // Two overlapping zooms (top / bottom, or left / right for a landscape photo) so small handwritten digits stay sharp.
+  const parts = [full.b];
+  if (h >= w){ const c = Math.round(h * 0.58), o = Math.round(h * 0.42); parts.push((await jpeg(0, 0, w, c, 1800)).b, (await jpeg(0, o, w, h - o, 1800)).b); }
+  else { const c = Math.round(w * 0.58), o = Math.round(w * 0.42); parts.push((await jpeg(0, 0, c, h, 1800)).b, (await jpeg(o, 0, w - o, h, 1800)).b); }
+  return {blob: full.b, w: full.w, h: full.h, parts};
 }
 function blobToB64(blob){ return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); }); }
 
@@ -1085,10 +1093,11 @@ SHEET LAYOUT
 READING RULES
 - Decimal separator may be a comma or a dot: "717,73" -> 717.73 ; "5" -> 5 ; "12,80" -> 12.8.
 - Handwriting often sits slightly above or below the printed line. Assign every number to the day of its row. A row's amounts belong together: CB + ESPECES (+ the 20 % amounts) of one day should be close to that day's TOTAL; use this to decide which row a number belongs to, but still transcribe the TOTAL exactly as written.
+- Row anchoring: in each row the 20 % TOTAL usually repeats the 20 % amount of that same row (CB 3,2 -> TOTAL 3,2), and the right-hand TOTAL equals the 10 % amounts (CB + ESPECES + ...) plus the 20 % TOTAL of that same row. Use these two facts, and the day number at the left, to decide which row every number belongs to. Read each row at the height of its day number.
 - If a number is crossed out and rewritten, use the rewritten value.
 - Ignore stray numbers outside the table (margin notes) but mention them in "notes".
 - Empty cell -> null. Do not invent values. Never replace a written total by your own sum.
-- If a digit is unclear, give your best reading and add an entry to "uncertain".
+- Only add an entry to "uncertain" when you genuinely hesitate between two different readings of a number; give both. Do not list numbers you read clearly.
 
 OUTPUT: exactly one compact JSON object (no markdown fences, no comments, no extra spaces or line breaks), with this shape:
 {"month":9,"year":null,
@@ -1101,11 +1110,13 @@ Each "days" row is exactly: [day, closed (1 or 0), cheque_20, cb_20, especes_20,
 "totals_row" is the written column-totals row: [cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total] (null where nothing is written).
 The numbers above only illustrate the format. Put one row in "days" for every day row of the sheet, closed days included (closed 1, values null).
 Each "uncertain" entry is [day, field, reading, alternative]; field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
-const prompt = () => PROMPT_BASE + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
+const prompt = (n = 1) => PROMPT_BASE
+  + (n > 1 ? `\n\nIMAGES: image 1 is the whole sheet (use it to see which row and column each number is in). Images 2 and 3 are sharper zooms of the top part and the bottom part of the same sheet (they overlap in the middle): use them to read the digits precisely.` : '')
+  + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
 
 const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:'', readLimit:5};
 const settings = () => Object.assign({}, SETTINGS_DEFAULT, store.get(SET_KEY) || {});
-let sampleNS = null, sampleImages = false, downloadsNS = null;
+let sampleNS = null, sampleImages = false, downloadsNS = null, sampleLim = null;
 function engineReady(){ return inClaude ? !!(sampleNS && sampleImages) : !!settings().key; }
 function engineNote(){
   const n = $('#engineNote');
@@ -1162,8 +1173,8 @@ function readProgress(text){
   const m = text.match(/\[\s*\d{1,2}\s*,\s*[01]\s*,/g);
   $('#readProgress').textContent = m && m.length ? t('readingDays', {n:m.length}) : t('readingThinking');
 }
-async function readGemini(blob, st){
-  const b64 = await blobToB64(blob);
+async function readGemini(blobs, st, promptText){
+  const b64s = await Promise.all(blobs.map(blobToB64));
   let thinking = true;
   let model = st.model || st.autoModel || DEFAULT_MODEL.gemini;
   let res, msg = '', text = '', finish = ''; const tried = [model];
@@ -1173,9 +1184,9 @@ async function readGemini(blob, st){
     try {
       res = await fetchSSE(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
         method:'POST', headers:{'content-type':'application/json','x-goog-api-key':st.key},
-        body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}],
-          generationConfig: Object.assign({responseMimeType:'application/json', maxOutputTokens:8192}, thinking ? {thinkingConfig:{thinkingLevel:'low'}} : {})})
-      }, 75000, data => {
+        body: JSON.stringify({contents:[{parts:[{text:promptText}, ...b64s.map(d => ({inline_data:{mime_type:'image/jpeg', data:d}}))]}],
+          generationConfig: Object.assign({responseMimeType:'application/json', maxOutputTokens:16384}, thinking ? {thinkingConfig:{thinkingLevel:'high'}} : {})})
+      }, 180000, data => {
         let j; try { j = JSON.parse(data); } catch(e){ return; }
         const c = j.candidates && j.candidates[0];
         (c && c.content && c.content.parts || []).forEach(p => { if (p.text && !p.thought) text += p.text; });
@@ -1228,14 +1239,14 @@ async function pickGeminiModel(key, avoid){
   const tried = Array.isArray(avoid) ? avoid : [avoid];
   return (await geminiCandidates(key)).find(n => !tried.includes(n)) || null;
 }
-async function readAnthropic(blob, st){
-  const b64 = await blobToB64(blob);
+async function readAnthropic(blobs, st, text){
+  const b64s = await Promise.all(blobs.map(blobToB64));
   const model = st.model || DEFAULT_MODEL.anthropic;
   const res = await fetchT('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{'content-type':'application/json','x-api-key':st.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-    body: JSON.stringify({model, max_tokens:8000, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},{type:'text', text:prompt()}]}]})
-  }, 120000);
+    body: JSON.stringify({model, max_tokens:12000, messages:[{role:'user', content:[...b64s.map(d => ({type:'image', source:{type:'base64', media_type:'image/jpeg', data:d}})), {type:'text', text}]}]})
+  }, 240000);
   const body = await res.json().catch(() => ({}));
   if (!res.ok){
     const msg = body?.error?.message || '';
@@ -1247,9 +1258,11 @@ async function readAnthropic(blob, st){
   }
   return (body.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
 }
-async function readSample(blob){
+async function readSample(blobs, text){
   if (!sampleNS) throw new Error(t('errSampleNA'));
-  try { return (await sampleNS(prompt(), {images:[blob], modelTier:'complex'})).text; }
+  const max = (sampleLim && sampleLim.images && sampleLim.images.maxCount) || 1;
+  const imgs = blobs.slice(0, max);
+  try { return (await sampleNS(imgs.length < blobs.length ? text.replace(/\n\nIMAGES:[^\n]*/, '') : text, {images:imgs, modelTier:'complex', effort:'high', onText: ({text}) => readProgress(text)})).text; }
   catch(e){
     if (e && e.code === 'not_granted') throw new Error(t('errNotGranted'));
     if (e && e.code === 'rate_limited') throw new Error(t('errRate'));
@@ -1299,6 +1312,7 @@ function applyReading(j){
     else if (f.startsWith('recap.')) k = rmap[f.slice(6)];
     if (!k || isNaN(d)) return;
     const r = parseNum(u.reading), a = parseNum(u.alternative);
+    if (a == null || isNaN(a) || (r != null && eq(r, a))) return;
     S.uncertain[`${d}.${k}`] = {r: r != null && !isNaN(r) ? r : null, a: a != null && !isNaN(a) ? a : null};
   });
   S.notes = typeof j.notes === 'string' ? j.notes.trim() : '';
@@ -1426,9 +1440,10 @@ Object.assign(I18N.fr, {
   errInterrupted:"La lecture a été coupée parce que l'écran a été quitté. Elle reprend toute seule en revenant ici ; sinon, touchez « Réessayer ».",
   errNet:'Connexion internet coupée. Vérifiez le Wi-Fi ou la 4G, puis réessayez.', errTimeout:'La lecture prend trop de temps. Réessayez.',
   errBusy:'Le service de lecture est surchargé en ce moment. Réessayez dans quelques minutes.',
-  readingSub:'30 secondes à 1 minute. Restez sur cet écran.',
+  readingSub:'1 à 3 minutes. Restez sur cet écran.',
   limitLabel:'Lectures de photos par semaine (maximum, 0 = sans limite)',
   limitReached:'Limite de {n} lectures de photo par semaine atteinte. Prochaine lecture possible {d}. Vous pouvez remplir à la main en attendant.',
+  readingVerify:'Vérification des lignes qui ne tombent pas juste…',
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
@@ -1461,9 +1476,10 @@ Object.assign(I18N.zh, {
   errInterrupted:'离开页面后识别被中断了。回到这个页面会自动重新开始；如果没有，请点“再试一次”。',
   errNet:'网络断了，请检查 Wi-Fi 或手机网络后再试。', errTimeout:'识别时间太长，请再试一次。',
   errBusy:'识别服务现在太忙，请过几分钟再试。',
-  readingSub:'大约 30 秒到 1 分钟，请停留在这个页面。',
+  readingSub:'大约 1 到 3 分钟，请停留在这个页面。',
   limitLabel:'每周最多识别几张照片（0 = 不限）',
   limitReached:'本周已经识别了 {n} 张照片，达到上限。{d}可以再识别。现在可以先手动填写。',
+  readingVerify:'正在复查对不上的行…',
   readingSend:'正在发送照片…', readingThinking:'正在看表格…', readingDays:'已读 {n} 天', readingRetry:'服务比较慢，正在重试（第 {n} 次）…'
 });
 const shortMonth = m => t('monthsShort').split(',')[m - 1];
@@ -1603,6 +1619,28 @@ async function openMonth(key){
   openReview();
 }
 
+/* ---------- reading with a second, targeted check ---------- */
+function callReader(blobs, text){
+  if (inClaude) return readSample(blobs, text);
+  const st = settings();
+  return st.provider === 'anthropic' ? readAnthropic(blobs, st, text) : readGemini(blobs, st, text);
+}
+function failedChecks(){ // plain English, for the second pass
+  const c = calc(), out = [], f = x => (+x).toFixed(2);
+  for (let d = 1; d <= c.n; d++){
+    const r = S.days[d], cr = c.rows[d];
+    if (r.wtot != null && !eq(r.wtot, cr.tot)) out.push(`day ${d}: the amounts read on this row add up to ${f(cr.tot)} but the day TOTAL read is ${f(r.wtot)}`);
+    if (r.w20 != null && !eq(r.w20, cr.ttc20)) out.push(`day ${d}: the 20 % amounts add up to ${f(cr.ttc20)} but the 20 % TOTAL read is ${f(r.w20)}`);
+    if (cr.has && r.wtot == null) out.push(`day ${d}: amounts were read but no day TOTAL`);
+    if (!cr.has && r.wtot) out.push(`day ${d}: a day TOTAL of ${f(r.wtot)} was read but no amounts`);
+  }
+  const names = {chq20:'cheque 20 %', cb20:'CB 20 %', esp20:'especes 20 %', tk20:'tickets 20 %', w20:'total 20 %', chq10:'cheque 10 %', cb10:'CB 10 %', esp10:'especes 10 %', tk10:'tickets 10 %', wtot:'day TOTAL column'};
+  const colMap = {...Object.fromEntries(INPUTS.map(k => [k, c.sum[k]])), w20:c.sum.ttc20, wtot:c.sum.tot};
+  Object.entries(S.col).forEach(([k, v]) => { if (v != null && !isNaN(v) && !eq(v, colMap[k])) out.push(`totals row, ${names[k]}: written ${f(v)} but the days add up to ${f(colMap[k])}`); });
+  return out;
+}
+const VERIFY = (prev, issues) => `\n\nSECOND CHECK. A first transcription of this photo (below) fails these arithmetic checks:\n- ${issues.slice(0, 25).join('\n- ')}\nThe person who filled the sheet usually adds correctly, so a failed check most often means a misread digit, a missed number, or a number put on the wrong row (numbers are often written slightly above or below their line). Look again very carefully at these rows and their neighbours on the photo and correct the transcription. If, after careful re-reading, the sheet itself really contains an addition mistake, keep exactly what is written: never change a number just to make a sum match. Return the complete corrected JSON, in exactly the same compact format.\nFirst transcription:\n${prev}`;
+
 /* ---------- weekly reading limit (counts successful readings only) ---------- */
 const READS_KEY = 'caisse-lectures-v1', WEEK = 7 * 24 * 3600 * 1000;
 const recentReads = () => (store.get(READS_KEY) || []).filter(x => Date.now() - x < WEEK);
@@ -1626,7 +1664,7 @@ async function onFile(file){
   try {
     const p = await prepImage(file, 2000);
     if (photo.url) URL.revokeObjectURL(photo.url);
-    photo = {blob:p.blob, url:URL.createObjectURL(p.blob), w:p.w, h:p.h};
+    photo = {blob:p.blob, url:URL.createObjectURL(p.blob), w:p.w, h:p.h, parts:p.parts};
     $('#thumb').src = photo.url;
     if (engineReady()) readPhoto();
     else if (!inClaude) openSettings();
@@ -1646,11 +1684,21 @@ async function readPhoto(){
   tick(); readTimer = setInterval(tick, 1000);
   let read;
   try {
-    let text;
-    if (inClaude) text = await readSample(photo.blob);
-    else { const st = settings(); text = st.provider === 'anthropic' ? await readAnthropic(photo.blob, st) : await readGemini(photo.blob, st); }
+    const blobs = photo.parts || [photo.blob];
+    const text = await callReader(blobs, prompt(blobs.length));
     read = applyReading(extractJSON(text));
     countRead();
+    const issues = failedChecks();
+    if (issues.length){
+      $('#readProgress').textContent = t('readingVerify');
+      const first = S, firstRead = read;
+      try {
+        const text2 = await callReader(blobs, prompt(blobs.length) + VERIFY(text, issues));
+        const read2 = applyReading(extractJSON(text2));
+        if (failedChecks().length <= issues.length) read = {monthRead: read2.monthRead || firstRead.monthRead, yearRead: read2.yearRead || firstRead.yearRead};
+        else { S = first; read = firstRead; }
+      } catch(e){ S = first; read = firstRead; if (e && e.code === 'interrupted') throw e; }
+    }
   } catch(e){
     clearInterval(readTimer);
     $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false;
@@ -1983,7 +2031,7 @@ function init(){
   if (inClaude){
     claude.use('sample').then(async s => {
       sampleNS = s;
-      if (s){ const lim = await s.limits().catch(() => null); sampleImages = !!(lim && lim.images); }
+      if (s){ const lim = await s.limits().catch(() => null); sampleLim = lim; sampleImages = !!(lim && lim.images); }
       engineNote();
     });
   }
