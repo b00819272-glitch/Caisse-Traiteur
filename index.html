@@ -223,6 +223,7 @@ body{font-size:17px}
 .resume::after{content:"→";font-size:22px}
 .reading{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px 16px}
 .reading img{width:150px;height:195px;object-fit:cover;border-radius:12px;border:1px solid var(--rule)}
+.reading .progress{margin:0;font:600 17px/1.3 var(--body);color:var(--ink);min-height:1.3em}
 .reading .big{font:600 22px/1.3 var(--display);display:flex;gap:12px;align-items:center;color:var(--ink)}
 .monthline{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .monthline h2{font-size:30px;color:var(--ink);margin:0}
@@ -356,6 +357,7 @@ label.btn{cursor:pointer}
     <div class="reading" id="reading" hidden>
       <img id="thumb" alt="">
       <div class="big"><span class="spin"></span><span data-t="readingBig">Lecture de la feuille…</span></div>
+      <p class="progress" id="readProgress" aria-live="polite"></p>
       <p class="muted" style="margin:0"><span data-t="readingSub"></span> <span id="readTimer"></span></p>
     </div>
 
@@ -1087,25 +1089,17 @@ READING RULES
 - Empty cell -> null. Do not invent values. Never replace a written total by your own sum.
 - If a digit is unclear, give your best reading and add an entry to "uncertain".
 
-OUTPUT: exactly one JSON object, no markdown fences, no comments, with this shape:
-{
- "month": 9,
- "year": null,
- "days": [
-  {"day": 1, "closed": false,
-   "t20": {"cheque": null, "cb": null, "especes": null, "tickets": null, "total": null},
-   "t10": {"cheque": null, "cb": 717.73, "especes": 5, "tickets": null},
-   "day_total": 722.73}
- ],
- "column_totals": {"t20": {"cheque": null, "cb": 77.8, "especes": null, "tickets": null, "total": 77.8},
-                   "t10": {"cheque": null, "cb": 19148.84, "especes": 306.19, "tickets": null},
-                   "day_total": 19532.83},
- "recap": {"card": 19226.64, "cash": 306.19, "cheques": null, "tickets": null, "total": 19532.83},
- "uncertain": [{"day": 16, "field": "t10.cb", "reading": 799.48, "alternative": 793.48}],
- "notes": "..."
-}
-The numbers above only illustrate the format. Put one entry in "days" for every day row of the sheet, closed days included (closed: true, values null).
-Allowed "field" values in "uncertain": "t20.cheque","t20.cb","t20.especes","t20.tickets","t20.total","t10.cheque","t10.cb","t10.especes","t10.tickets","day_total"; use day 0 for the column totals row and day -1 with "recap.card","recap.cash","recap.cheques","recap.tickets","recap.total" for the recap.`;
+OUTPUT: exactly one compact JSON object (no markdown fences, no comments, no extra spaces or line breaks), with this shape:
+{"month":9,"year":null,
+ "days":[[1,0,null,null,null,null,null,null,717.73,5,null,722.73],[6,1,null,null,null,null,null,null,null,null,null,null]],
+ "totals_row":[null,77.8,null,null,77.8,null,19148.84,306.19,null,19532.83],
+ "recap":{"card":19226.64,"cash":306.19,"cheques":null,"tickets":null,"total":19532.83},
+ "uncertain":[[16,"cb10",799.48,793.48]],
+ "notes":"..."}
+Each "days" row is exactly: [day, closed (1 or 0), cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total].
+"totals_row" is the written column-totals row: [cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total] (null where nothing is written).
+The numbers above only illustrate the format. Put one row in "days" for every day row of the sheet, closed days included (closed 1, values null).
+Each "uncertain" entry is [day, field, reading, alternative]; field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
 const prompt = () => PROMPT_BASE + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
 
 const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:''};
@@ -1140,27 +1134,65 @@ async function fetchT(url, opts, ms){
   } finally { clearTimeout(timer); }
 }
 const wait = ms => new Promise(r => setTimeout(r, ms));
+function netErr(ac){
+  const e = new Error(ac.signal.aborted ? t('errTimeout') : hiddenDuringRead ? t('errInterrupted') : t('errNet'));
+  e.code = ac.signal.aborted ? 'timeout' : hiddenDuringRead ? 'interrupted' : 'network'; return e;
+}
+// POST and read a server-sent-events answer; gives up if nothing arrives for `idleMs`.
+async function fetchSSE(url, opts, idleMs, onData){
+  const ac = new AbortController(); let timer = setTimeout(() => ac.abort(), idleMs);
+  const arm = () => { clearTimeout(timer); timer = setTimeout(() => ac.abort(), idleMs); };
+  let res;
+  try { res = await fetch(url, Object.assign({}, opts, {signal:ac.signal})); } catch(e){ clearTimeout(timer); throw netErr(ac); }
+  if (!res.ok || !res.body){ clearTimeout(timer); return res; }
+  const reader = res.body.getReader(), dec = new TextDecoder(); let buf = '';
+  arm();
+  try {
+    for (;;){
+      const {done, value} = await reader.read(); if (done) break; arm();
+      buf += dec.decode(value, {stream:true}); let i;
+      while ((i = buf.indexOf('\n')) >= 0){ const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line.startsWith('data:')) onData(line.slice(5).trim()); }
+    }
+  } catch(e){ throw netErr(ac); } finally { clearTimeout(timer); }
+  if (buf.trim().startsWith('data:')) onData(buf.trim().slice(5).trim());
+  return res;
+}
+function readProgress(text){
+  const m = text.match(/\[\s*\d{1,2}\s*,\s*[01]\s*,/g);
+  $('#readProgress').textContent = m && m.length ? t('readingDays', {n:m.length}) : t('readingThinking');
+}
 async function readGemini(blob, st){
   const b64 = await blobToB64(blob);
   let thinking = true;
-  const call = model => fetchT(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method:'POST', headers:{'content-type':'application/json','x-goog-api-key':st.key},
-    body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}],
-      generationConfig: Object.assign({responseMimeType:'application/json'}, thinking ? {thinkingConfig:{thinkingLevel:'low'}} : {})})
-  }, 120000);
   let model = st.model || st.autoModel || DEFAULT_MODEL.gemini;
-  let res, body = {}, msg = '', switched = false;
-  for (let attempt = 0; attempt < 5; attempt++){
-    try { res = await call(model); }
-    catch(e){ if (e.code === 'network' && attempt < 2){ await wait(2000); continue; } throw e; }
-    body = await res.json().catch(() => ({})); msg = body?.error?.message || '';
-    if (res.ok) break;
-    if (res.status === 400 && thinking && /think/i.test(msg)){ thinking = false; continue; }           // model without thinking levels
-    if (res.status === 404 && !st.model && !switched){ const m = await pickGeminiModel(st.key, model); if (m){ model = m; switched = true; store.set(SET_KEY, Object.assign(settings(), {autoModel:m})); continue; } }
-    if (res.status >= 500 && attempt < 4){                                                              // overloaded: wait, then try another Flash model
-      if (attempt >= 1 && !st.model && !switched){ const m = await pickGeminiModel(st.key, model); if (m){ model = m; switched = true; } }
-      await wait(2500 * (attempt + 1)); continue;
+  let res, msg = '', text = '', finish = ''; const tried = [model];
+  for (let attempt = 0; attempt < 6; attempt++){
+    text = ''; finish = '';
+    $('#readProgress').textContent = attempt ? t('readingRetry', {n:attempt + 1}) : t('readingSend');
+    try {
+      res = await fetchSSE(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
+        method:'POST', headers:{'content-type':'application/json','x-goog-api-key':st.key},
+        body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}],
+          generationConfig: Object.assign({responseMimeType:'application/json', maxOutputTokens:8192}, thinking ? {thinkingConfig:{thinkingLevel:'low'}} : {})})
+      }, 75000, data => {
+        let j; try { j = JSON.parse(data); } catch(e){ return; }
+        const c = j.candidates && j.candidates[0];
+        (c && c.content && c.content.parts || []).forEach(p => { if (p.text && !p.thought) text += p.text; });
+        if (c && c.finishReason) finish = c.finishReason;
+        readProgress(text);
+      });
+    } catch(e){
+      if ((e.code === 'network' || e.code === 'timeout') && attempt < 2){ await wait(1500); continue; }
+      throw e;
     }
+    if (res.ok){ if (text){ if (model !== (st.autoModel || DEFAULT_MODEL.gemini) && !st.model) store.set(SET_KEY, Object.assign(settings(), {autoModel:model})); break; } if (attempt < 2){ continue; } break; }
+    const body = await res.json().catch(() => ({})); msg = body?.error?.message || '';
+    if (res.status === 400 && thinking && /think/i.test(msg)){ thinking = false; continue; }
+    if ((res.status === 404 || res.status >= 500 || res.status === 429) && !st.model){          // unavailable or overloaded: next Flash model
+      const m = await pickGeminiModel(st.key, tried);
+      if (m){ tried.push(m); model = m; if (res.status === 404) store.set(SET_KEY, Object.assign(settings(), {autoModel:m})); await wait(1200); continue; }
+    }
+    if (res.status >= 500 && attempt < 3){ await wait(3000 * (attempt + 1)); continue; }
     break;
   }
   if (!res.ok){
@@ -1172,21 +1204,28 @@ async function readGemini(blob, st){
     if (res.status >= 500) throw new Error(t('errBusy') + detail);
     throw new Error(t('errOther', {p:'Google', s:res.status, m:msg}));
   }
-  const parts = body?.candidates?.[0]?.content?.parts || [];
-  const text = parts.filter(p => !p.thought && p.text).map(p => p.text).join('');
-  if (!text){ const why = body?.candidates?.[0]?.finishReason || body?.promptFeedback?.blockReason || ''; throw new Error(t('errEmpty') + (why ? `\n(Google : ${why})` : '')); }
+  if (!text) throw new Error(t('errEmpty') + (finish ? `\n(Google : ${finish})` : ''));
   return text;
 }
-async function pickGeminiModel(key, avoid){
+let geminiModelsCache = null;
+async function geminiCandidates(key){
+  if (geminiModelsCache) return geminiModelsCache;
   try {
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {headers:{'x-goog-api-key':key}});
     const j = await r.json();
-    const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, '')).filter(n => n !== avoid);
+    const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''));
     const ver = s => parseFloat((s.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1]);
-    const pick = list => list.sort((a, b) => ver(b) - ver(a))[0];
-    return pick(ok.filter(n => /flash/.test(n) && !/(lite|tts|image|live|audio|embed|exp|preview|thinking)/.test(n)))
-        || pick(ok.filter(n => /flash/.test(n) && !/(tts|image|live|audio|embed)/.test(n))) || null;
-  } catch(e){ return null; }
+    const desc = l => l.sort((a, b) => ver(b) - ver(a));
+    const flash = desc(ok.filter(n => /^gemini-[\d.]+-flash$/.test(n)));
+    const lite = desc(ok.filter(n => /^gemini-[\d.]+-flash-lite$/.test(n)));
+    const other = desc(ok.filter(n => /flash/.test(n) && !/(tts|image|live|audio|embed|exp|thinking)/.test(n) && !flash.includes(n) && !lite.includes(n)));
+    geminiModelsCache = [...flash, ...lite, ...other];
+  } catch(e){ geminiModelsCache = []; }
+  return geminiModelsCache;
+}
+async function pickGeminiModel(key, avoid){
+  const tried = Array.isArray(avoid) ? avoid : [avoid];
+  return (await geminiCandidates(key)).find(n => !tried.includes(n)) || null;
 }
 async function readAnthropic(blob, st){
   const b64 = await blobToB64(blob);
@@ -1217,7 +1256,18 @@ async function readSample(blob){
   }
 }
 
+function normalizeReading(j){
+  if (!j || !Array.isArray(j.days) || !Array.isArray(j.days[0])) return j;
+  const o = {month:j.month, year:j.year, recap:j.recap || {}, notes:j.notes || ''};
+  o.days = j.days.map(r => ({day:r[0], closed:!!r[1], t20:{cheque:r[2], cb:r[3], especes:r[4], tickets:r[5], total:r[6]}, t10:{cheque:r[7], cb:r[8], especes:r[9], tickets:r[10]}, day_total:r[11]}));
+  const tr_ = j.totals_row || [];
+  o.column_totals = {t20:{cheque:tr_[0], cb:tr_[1], especes:tr_[2], tickets:tr_[3], total:tr_[4]}, t10:{cheque:tr_[5], cb:tr_[6], especes:tr_[7], tickets:tr_[8]}, day_total:tr_[9]};
+  const F = {chq20:'t20.cheque', cb20:'t20.cb', esp20:'t20.especes', tk20:'t20.tickets', tot20:'t20.total', chq10:'t10.cheque', cb10:'t10.cb', esp10:'t10.especes', tk10:'t10.tickets', day_total:'day_total'};
+  o.uncertain = (j.uncertain || []).filter(Array.isArray).map(u => ({day:u[0], field: +u[0] === -1 ? 'recap.' + u[1] : (F[u[1]] || u[1]), reading:u[2], alternative:u[3]}));
+  return o;
+}
 function applyReading(j){
+  j = normalizeReading(j);
   let m = parseInt(j.month, 10); const monthRead = m >= 1 && m <= 12; if (!monthRead) m = prevMonth()[0];
   let y = parseInt(j.year, 10); const yearRead = y >= 2000 && y <= 2100; if (!yearRead) y = guessYear(m);
   S = newState(m, y); S.source = 'photo';
@@ -1375,7 +1425,8 @@ Object.assign(I18N.fr, {
   errInterrupted:"La lecture a été coupée parce que l'écran a été quitté. Elle reprend toute seule en revenant ici ; sinon, touchez « Réessayer ».",
   errNet:'Connexion internet coupée. Vérifiez le Wi-Fi ou la 4G, puis réessayez.', errTimeout:'La lecture prend trop de temps. Réessayez.',
   errBusy:'Le service de lecture est surchargé en ce moment. Réessayez dans quelques minutes.',
-  readingSub:'30 secondes à 1 minute. Restez sur cet écran.'
+  readingSub:'30 secondes à 1 minute. Restez sur cet écran.',
+  readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
   tabPhoto:'新的月份', tabDash:'总览',
@@ -1407,7 +1458,8 @@ Object.assign(I18N.zh, {
   errInterrupted:'离开页面后识别被中断了。回到这个页面会自动重新开始；如果没有，请点“再试一次”。',
   errNet:'网络断了，请检查 Wi-Fi 或手机网络后再试。', errTimeout:'识别时间太长，请再试一次。',
   errBusy:'识别服务现在太忙，请过几分钟再试。',
-  readingSub:'大约 30 秒到 1 分钟，请停留在这个页面。'
+  readingSub:'大约 30 秒到 1 分钟，请停留在这个页面。',
+  readingSend:'正在发送照片…', readingThinking:'正在看表格…', readingDays:'已读 {n} 天', readingRetry:'服务比较慢，正在重试（第 {n} 次）…'
 });
 const shortMonth = m => t('monthsShort').split(',')[m - 1];
 const fmt0 = x => new Intl.NumberFormat('fr-FR', {maximumFractionDigits:0}).format(Math.round(x)).replace(/ | /g, ' ');
@@ -1571,7 +1623,7 @@ async function readPhoto(){
   if (!engineReady()){ if (!inClaude) openSettings(); return; }
   showStep('photo');
   $('#drop').hidden = true; $('#photoTip').hidden = true; $('#btnRetry').hidden = true; setStatus(null);
-  $('#reading').hidden = false; hiddenDuringRead = document.hidden; retryWhenVisible = false;
+  $('#reading').hidden = false; hiddenDuringRead = document.hidden; retryWhenVisible = false; $('#readProgress').textContent = t('readingSend');
   const t0 = Date.now(); clearInterval(readTimer);
   const tick = () => { $('#readTimer').textContent = `${Math.round((Date.now() - t0) / 1000)} s`; };
   tick(); readTimer = setInterval(tick, 1000);
