@@ -118,6 +118,10 @@ select{border:1px solid var(--rule);background:var(--card);border-radius:10px;pa
 .minitabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
 #ackList{padding:6px 16px}
 .ok-t{color:var(--ok)}
+.pop-crop{position:relative;display:block;width:100%;height:104px;overflow:hidden;border-radius:10px;border:1px solid var(--rule);padding:0;background:#ddd;cursor:zoom-in}
+.pop-crop img{position:absolute;max-width:none;pointer-events:none}
+.pop-crop .mark{position:absolute;border:2px solid #e8a400;border-radius:6px;box-shadow:0 0 0 2000px rgba(255,255,255,.18);pointer-events:none}
+.pop-crop .lbl{position:absolute;right:6px;bottom:6px;background:rgba(20,24,40,.72);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:999px}
 .pop{position:absolute;z-index:36;width:min(320px,calc(100vw - 24px));background:var(--card);border:1px solid var(--rule);border-radius:14px;box-shadow:0 10px 30px rgba(15,20,40,.22);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
 .pop-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;font-size:15px}
 .pop-x{border:0;background:var(--paper);border-radius:999px;width:32px;height:32px;font-size:20px;line-height:1;cursor:pointer;color:var(--muted);flex:none}
@@ -200,11 +204,11 @@ table.sheet{border-collapse:separate;border-spacing:0;font-family:var(--num);fon
 .bar .btn{flex:1;min-width:0;padding:12px 8px}
 
 /* overlay photo */
-.overlay{position:fixed;inset:0;z-index:40;background:rgba(10,12,20,.92);display:flex;flex-direction:column}
+.overlay{position:fixed;inset:0;z-index:48;background:#0b0d14;display:flex;flex-direction:column}
 .overlay .top{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#fff;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .overlay .top button{background:#fff;color:#111;border:0;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
 .overlay .scroller{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
-.overlay img{display:block;max-width:none}
+.overlay img{display:block;max-width:none;margin:0 auto}
 
 .field{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
 .field input,.field select{border:1px solid var(--rule);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--card);width:100%;font-weight:400}
@@ -349,8 +353,10 @@ details.card[open] summary{margin-bottom:12px}
 .dt-fig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-bottom:6px}
 .dt-fig .l{font-size:14px;color:var(--muted)} .dt-fig .v{font:600 18px var(--num)}
 .dt-fig .full{grid-column:1/-1} .dt-fig .full .v{font-size:28px;color:var(--ink)}
-.dt-photo{display:flex;gap:12px;align-items:center;margin:8px 0 6px}
-.dt-photo img{width:72px;height:94px;object-fit:cover;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in}
+.dt-photo{margin:2px 0 10px;min-height:150px;border-radius:12px;background:var(--paper)}
+.dt-shot{position:relative;display:block;width:100%;height:150px;padding:0;border:1px solid var(--rule);border-radius:12px;overflow:hidden;cursor:zoom-in;background:#ddd}
+.dt-shot img{width:100%;height:100%;object-fit:cover;object-position:50% 12%;display:block}
+.dt-shot .lbl{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;align-items:center;background:rgba(20,24,40,.75);color:#fff;font-size:14px;font-weight:600;padding:6px 12px;border-radius:999px}
 .corrbox{color:var(--muted);font-size:14px;padding:4px 2px}
 .corrbox summary{cursor:pointer;width:max-content}
 label.btn{cursor:pointer}
@@ -634,6 +640,7 @@ label.btn{cursor:pointer}
 <div class="pop" id="pop" hidden role="dialog" aria-labelledby="popT">
   <div class="pop-h"><b id="popT"></b><button type="button" class="pop-x" id="popX" aria-label="×">×</button></div>
   <p class="pop-d" id="popD"></p>
+  <button type="button" class="pop-crop" id="popCrop" hidden></button>
   <div class="pop-b" id="popB"></div>
   <p class="pop-n" id="popN" hidden></p>
 </div>
@@ -1251,12 +1258,12 @@ OUTPUT: exactly one compact JSON object (no markdown fences, no comments, no ext
  "days":[[1,0,null,null,null,null,null,null,717.73,5,null,722.73],[6,1,null,null,null,null,null,null,null,null,null,null]],
  "totals_row":[null,77.8,null,null,77.8,null,19148.84,306.19,null,19532.83],
  "recap":{"card":19226.64,"cash":306.19,"cheques":null,"tickets":null,"total":19532.83},
- "uncertain":[[16,"cb10",799.48,793.48]],
+ "uncertain":[[16,"cb10",799.48,793.48,[612,655,628,712]]],
  "notes":["...","..."]}
 Each "days" row is exactly: [day, closed (1 or 0), cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total].
 "totals_row" is the written column-totals row: [cheque_20, cb_20, especes_20, tickets_20, total_20, cheque_10, cb_10, especes_10, tickets_10, day_total] (null where nothing is written).
 The numbers above only illustrate the format. Put one row in "days" for every day row of the sheet, closed days included (closed 1, values null).
-Each "uncertain" entry is [day, field, reading, alternative]; field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
+Each "uncertain" entry is [day, field, reading, alternative, box]; box is [ymin, xmin, ymax, xmax] of that handwritten number on image 1 (the whole sheet), as integers from 0 to 1000 relative to the image height and width; draw it tightly around the number. field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
 const prompt = (n = 1) => PROMPT_BASE + `\n"notes" is a list of very short remarks (one fact per item, at most 6 items).`
   + (n > 1 ? `\n\nIMAGES: image 1 is the whole sheet (use it to see which row and column each number is in). Images 2 and 3 are sharper zooms of the top part and the bottom part of the same sheet (they overlap in the middle): use them to read the digits precisely.` : '')
   + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
@@ -1424,8 +1431,17 @@ function normalizeReading(j){
   const tr_ = j.totals_row || [];
   o.column_totals = {t20:{cheque:tr_[0], cb:tr_[1], especes:tr_[2], tickets:tr_[3], total:tr_[4]}, t10:{cheque:tr_[5], cb:tr_[6], especes:tr_[7], tickets:tr_[8]}, day_total:tr_[9]};
   const F = {chq20:'t20.cheque', cb20:'t20.cb', esp20:'t20.especes', tk20:'t20.tickets', tot20:'t20.total', chq10:'t10.cheque', cb10:'t10.cb', esp10:'t10.especes', tk10:'t10.tickets', day_total:'day_total'};
-  o.uncertain = (j.uncertain || []).filter(Array.isArray).map(u => ({day:u[0], field: +u[0] === -1 ? 'recap.' + u[1] : (F[u[1]] || u[1]), reading:u[2], alternative:u[3]}));
+  o.uncertain = (j.uncertain || []).filter(Array.isArray).map(u => ({day:u[0], field: +u[0] === -1 ? 'recap.' + u[1] : (F[u[1]] || u[1]), reading:u[2], alternative:u[3], box:u[4]}));
   return o;
+}
+// [ymin, xmin, ymax, xmax] in 0–1000 (fractions 0–1 accepted), or null when unusable.
+function cleanBox(b){
+  if (!Array.isArray(b) || b.length !== 4) return null;
+  let v = b.map(Number); if (v.some(x => !isFinite(x))) return null;
+  if (v.every(x => x >= 0 && x <= 1.5)) v = v.map(x => x * 1000);
+  v = v.map(x => Math.max(0, Math.min(1000, x)));
+  if (v[2] <= v[0] || v[3] <= v[1] || v[2] - v[0] > 300 || v[3] - v[1] > 400) return null;
+  return v.map(x => Math.round(x));
 }
 function applyReading(j){
   j = normalizeReading(j);
@@ -1460,7 +1476,8 @@ function applyReading(j){
     if (!k || isNaN(d)) return;
     const r = parseNum(u.reading), a = parseNum(u.alternative);
     if (a == null || isNaN(a) || (r != null && eq(r, a))) return;
-    S.uncertain[`${d}.${k}`] = {r: r != null && !isNaN(r) ? r : null, a: a != null && !isNaN(a) ? a : null};
+    const box = cleanBox(u.box);
+    S.uncertain[`${d}.${k}`] = Object.assign({r: r != null && !isNaN(r) ? r : null, a: a != null && !isNaN(a) ? a : null}, box ? {b:box} : {});
   });
   S.notes = Array.isArray(j.notes) ? j.notes.map(x => String(x).trim()).filter(Boolean) : (typeof j.notes === 'string' ? j.notes.trim() : '');
   return {monthRead, yearRead};
@@ -1558,6 +1575,7 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  popCropLbl:'Sur la photo',
   lockText:'Mois verrouillé (plus de 6 mois).', lockedRead:'Mois verrouillé (plus de 6 mois) : consultation seulement.', lockOpenText:'Mois déverrouillé : chaque modification est notée.',
   unlock:'Modifier', relock:'Reverrouiller', unlockTitle:'Modifier {m} ?', unlockBody:"Ce mois a plus de 6 mois. Les modifications seront notées dans le tableau de bord, avec l'ancien et le nouveau total.", unlockYes:'Oui, modifier',
   chartTitle:"Chiffre d'affaires mensuel (€)",
@@ -1615,6 +1633,7 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  popCropLbl:'照片上',
   lockText:'已锁定（超过 6 个月）。', lockedRead:'已锁定（超过 6 个月），只能查看。', lockOpenText:'已解锁：每次修改都会记录。',
   unlock:'修改', relock:'重新锁定', unlockTitle:'修改 {m}？', unlockBody:'这个月份超过 6 个月。修改会记录在总览里，包括原来和新的总额。', unlockYes:'确定修改',
   chartTitle:'每月营业额（€）',
@@ -2127,6 +2146,7 @@ function renderDash(){
   $('#loglist').innerHTML = H.log.map(e => { const {m, y} = parseKey(e.key); return `<li>${esc(t(e.type === 'replace' ? 'logReplace' : 'logLine', {d:new Date(e.at).toLocaleString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {dateStyle:'short', timeStyle:'short'}), m:monthYear(m, y), a:fmt(e.before ?? 0), b:fmt(e.after)}))}</li>`; }).join('');
 }
 let dtKey = null, dtPhoto = null;
+const zoomSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4M11 8v6M8 11h6"/></svg>';
 async function openDetail(k){
   const rows = monthRows(); const map = Object.fromEntries(rows.map(r => [r.k, r])); const r = map[k]; if (!r) return;
   dtKey = k;
@@ -2138,8 +2158,9 @@ async function openDetail(k){
     + f('', t('figCard'), fmt(r.s.carte)) + f('', t('figCash'), fmt(r.s.especes))
     + (r.s.cheques ? f('', t('figChq'), fmt(r.s.cheques)) : '') + (r.s.tickets ? f('', t('figTk'), fmt(r.s.tickets)) : '')
     + f('', t('openDays'), r.open) + '</div>';
-  html += `<div class="dt-photo" id="dtPhoto"><span class="muted">${esc(t('noPhoto'))}</span></div>`;
   if (r.locked) html += `<p class="muted small" style="margin:0;display:flex;gap:6px;align-items:center">${lockSvg}${esc(t('lockedShort'))}</p>`;
+  html = `<div class="dt-photo" id="dtPhoto" ${r.hasPhoto ? '' : 'hidden'}></div>` + html;
+  if (!r.hasPhoto) html += `<p class="muted small" style="margin:0">${esc(t('noPhoto'))}</p>`;
   $('#dtBody').innerHTML = html;
   $('#detailSheet').hidden = false; $('#dtOpen').focus();
   if (dtPhoto && dtPhoto.url) URL.revokeObjectURL(dtPhoto.url); dtPhoto = null;
@@ -2148,7 +2169,7 @@ async function openDetail(k){
     if (blob && dtKey === k){
       const bmp = await createImageBitmap(blob).catch(() => null);
       dtPhoto = {blob, url:URL.createObjectURL(blob), w:bmp ? bmp.width : 1600, h:bmp ? bmp.height : 2000};
-      $('#dtPhoto').innerHTML = `<img src="${dtPhoto.url}" alt="${esc(t('photoAlt'))}"><button type="button" class="btn" id="dtSeePhoto">${esc(t('viewPhoto'))}</button>`;
+      $('#dtPhoto').innerHTML = `<button type="button" class="dt-shot" id="dtSeePhoto" aria-label="${esc(t('viewPhoto'))}"><img src="${dtPhoto.url}" alt="${esc(t('photoAlt'))}"><span class="lbl">${zoomSvg}${esc(t('viewPhoto'))}</span></button>`;
     }
   }
 }
@@ -2221,6 +2242,22 @@ function askConfirm(title, body, yes, warn){
   });
 }
 function cfFinish(v){ $('#confirmSheet').hidden = true; const r = cfResolve; cfResolve = null; if (r) r(v); }
+// Zoom on the photo around a box [ymin, xmin, ymax, xmax] (0–1000): about three cells wide, number outlined.
+function showCrop(box){
+  const el = $('#popCrop');
+  if (!box || !photo || !photo.url || !photo.w){ el.hidden = true; el.innerHTML = ''; el._box = null; return; }
+  const W = 290, H = 104, pw = photo.w, ph = photo.h;
+  const bx0 = box[1] / 1000 * pw, bx1 = box[3] / 1000 * pw, by0 = box[0] / 1000 * ph, by1 = box[2] / 1000 * ph;
+  const cx = (bx0 + bx1) / 2, cy = (by0 + by1) / 2;
+  let rw = Math.max((bx1 - bx0) * 3, (by1 - by0) * 3 * W / H, pw * 0.16), rh = rw * H / W;
+  const k = W / rw;
+  let left = Math.min(Math.max(0, cx - rw / 2), Math.max(0, pw - rw)), top = Math.min(Math.max(0, cy - rh / 2), Math.max(0, ph - rh));
+  el.innerHTML = `<img src="${photo.url}" alt="" style="width:${pw * k}px;left:${-left * k}px;top:${-top * k}px">`
+    + `<span class="mark" style="left:${(bx0 - left) * k - 5}px;top:${(by0 - top) * k - 4}px;width:${(bx1 - bx0) * k + 10}px;height:${(by1 - by0) * k + 8}px"></span>`
+    + `<span class="lbl">${esc(t('popCropLbl'))}</span>`;
+  el.setAttribute('aria-label', t('viewPhoto'));
+  el._box = box; el.hidden = false;
+}
 function closePop(){ $('#pop').hidden = true; popIssue = null; }
 function openIssue(x, anchorEl){
   closePop();
@@ -2244,6 +2281,7 @@ function openIssue(x, anchorEl){
     html = `<button type="button" class="btn ok" data-pop="ack">✓ ${esc(t('ackBtn'))}</button>`;
   }
   $('#popB').innerHTML = html;
+  showCrop(uKey && u && u.b ? u.b : null);
   const inputHere = td && td.querySelector('input');
   $('#popN').hidden = !(editable && inputHere); $('#popN').textContent = t('popFix');
   const place = () => {
@@ -2335,11 +2373,17 @@ function updModelPh(){ const p = $('#provAnthropic').checked ? 'anthropic' : 'ge
 
 /* ---------- photo viewer ---------- */
 let zoom = 1, viewing = null;
-function openPhoto(p = photo){
+function openPhoto(p = photo, opt = {}){
   if (!p || !p.url) return;
   viewing = p;
   $('#ovImg').src = p.url; $('#overlay').hidden = false; document.body.style.overflow = 'hidden';
-  zoom = Math.min(1, window.innerWidth / p.w) * 1.6; applyZoom();
+  const sc = $('#ovScroll'), vw = sc.clientWidth || window.innerWidth, vh = sc.clientHeight || (window.innerHeight - 60);
+  if (opt.fit) zoom = Math.min(vw / p.w, vh / p.h);
+  else if (opt.box) zoom = Math.min(4, Math.max(vw / p.w * 2.4, 0.5));
+  else zoom = Math.min(1, window.innerWidth / p.w) * 1.6;
+  applyZoom();
+  if (opt.box){ const cx = (opt.box[1] + opt.box[3]) / 2000 * p.w * zoom, cy = (opt.box[0] + opt.box[2]) / 2000 * p.h * zoom; sc.scrollLeft = cx - vw / 2; sc.scrollTop = cy - vh / 2; }
+  else sc.scrollTop = sc.scrollLeft = 0;
 }
 function applyZoom(){ if (!viewing) return; $('#ovImg').style.width = Math.round(viewing.w * zoom) + 'px'; $('#ovTitle').textContent = `${t('photo')} · ${Math.round(zoom * 100)} %`; }
 
@@ -2377,6 +2421,7 @@ function init(){
   $('#btnResumeDraft').addEventListener('click', resumeDraft);
   $('#btnViewPhoto').addEventListener('click', () => openPhoto(photo));
   $('#ovClose').addEventListener('click', () => { $('#overlay').hidden = true; document.body.style.overflow = ''; });
+  $('#popCrop').addEventListener('click', () => { const b = $('#popCrop')._box; if (b) openPhoto(photo, {box:b}); });
   $('#zoomIn').addEventListener('click', () => { zoom = Math.min(4, zoom * 1.3); applyZoom(); });
   $('#zoomOut').addEventListener('click', () => { zoom = Math.max(0.15, zoom / 1.3); applyZoom(); });
   $('#btnUndo').addEventListener('click', () => { if (editable){ undo(); clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); } });
@@ -2399,14 +2444,14 @@ function init(){
   $('#chart').addEventListener('click', e => { const g = e.target.closest('[data-k]'); if (g) openDetail(g.dataset.k); });
   $('#chart').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.k){ e.preventDefault(); openDetail(e.target.dataset.k); } });
   $('#mlist').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openDetail(b.dataset.k); });
-  $('#detailSheet').addEventListener('click', e => { if (e.target.id === 'detailSheet') $('#detailSheet').hidden = true; if (e.target.id === 'dtSeePhoto' || (e.target.tagName === 'IMG' && e.target.closest('#dtPhoto'))) openPhoto(dtPhoto); });
+  $('#detailSheet').addEventListener('click', e => { if (e.target.id === 'detailSheet') $('#detailSheet').hidden = true; if (e.target.closest('#dtSeePhoto')) openPhoto(dtPhoto, {fit:true}); });
   $('#dtClose').addEventListener('click', () => { $('#detailSheet').hidden = true; });
   $('#dtOpen').addEventListener('click', () => { $('#detailSheet').hidden = true; openMonth(dtKey); });
   $('#dtPdf').addEventListener('click', () => { const st = H.months[dtKey]; if (st) saveFile(buildPdf(Object.assign(newState(st.month, st.year), st))); });
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     if (!$('#rowSheet').hidden) closeRow(); else if (!$('#monthSheet').hidden) msFinish(null);
-    else if (!$('#detailSheet').hidden) $('#detailSheet').hidden = true; else if (!$('#overlay').hidden) $('#ovClose').click();
+    else if (!$('#overlay').hidden) $('#ovClose').click(); else if (!$('#detailSheet').hidden) $('#detailSheet').hidden = true;
   });
   // cell edits (table + recap)
   $('#stepReview').addEventListener('change', e => {
