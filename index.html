@@ -1,0 +1,1889 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Caisse">
+<meta name="theme-color" content="#22307A">
+<meta name="robots" content="noindex">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+</head>
+<body>
+<title>Caisse du mois</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Kalam:wght@400&display=swap">
+<style>
+/* Layout: one narrow ledger column; ruled-paper header, then step cards; the month sheet scrolls sideways in its own frame. */
+:root{
+  --paper:#F4F6FB; --card:#FFFFFF; --rule:#C7D1EA; --rule-soft:#E2E7F4;
+  --ink:#22307A; --ink-soft:#E7EBFA; --text:#171A27; --muted:#5A6283;
+  --bad:#BC2F25; --bad-bg:#FCE8E5; --warn:#975A00; --warn-bg:#FFF1D6; --ok:#1E7044; --ok-bg:#E2F3E8;
+  --display:"Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+  --body:"IBM Plex Sans", system-ui, -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+  --num:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --hand:"Kalam", "Segoe Print", "Bradley Hand", cursive;
+  --radius:12px;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --paper:#10131C; --card:#181C29; --rule:#33395A; --rule-soft:#252A40;
+  --ink:#A9B7FF; --ink-soft:#232A4A; --text:#E9EBF3; --muted:#9BA2BF;
+  --bad:#FF8E80; --bad-bg:#3B1D1A; --warn:#F3B95E; --warn-bg:#382A12; --ok:#74D6A0; --ok-bg:#16301F; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --paper:#10131C; --card:#181C29; --rule:#33395A; --rule-soft:#252A40;
+  --ink:#A9B7FF; --ink-soft:#232A4A; --text:#E9EBF3; --muted:#9BA2BF;
+  --bad:#FF8E80; --bad-bg:#3B1D1A; --warn:#F3B95E; --warn-bg:#382A12; --ok:#74D6A0; --ok-bg:#16301F; color-scheme:dark }
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--text);font:15px/1.5 var(--body)}
+img{max-width:100%}
+[hidden]{display:none!important}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 120px}
+
+/* ruled-paper masthead */
+.mast{padding-block:22px 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;
+  }
+.brand h1{font:800 clamp(28px,7vw,40px)/1 var(--display);letter-spacing:-.02em;margin:0;color:var(--ink);text-wrap:balance}
+.brand p{margin:6px 0 0;color:var(--muted);font-size:14px}
+.zh{font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",sans-serif;opacity:.75;font-weight:400;margin-left:.35em}
+.iconbtn{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:8px 14px;cursor:pointer;font-size:14px;white-space:nowrap}
+
+.card{background:var(--card);border:1px solid var(--rule);border-radius:var(--radius);padding:18px}
+.stack{display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 8px}
+h2{font:600 20px/1.2 var(--display);margin:0 0 6px;text-wrap:balance}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;border:1px solid var(--rule);background:var(--card);padding:12px 16px;font-weight:600;cursor:pointer;min-height:48px;text-decoration:none}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:var(--card)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.ghost{background:transparent}
+.btn.block{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* photo drop */
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;text-align:center;border:2px dashed var(--rule);border-radius:var(--radius);padding:28px 16px;cursor:pointer;background:var(--paper);min-height:150px}
+.drop:hover{border-color:var(--ink)}
+.drop strong{font:600 18px/1.2 var(--display);color:var(--ink)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.thumb{display:flex;gap:14px;align-items:center}
+.thumb img{width:84px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in;background:var(--paper)}
+.status{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;background:var(--ink-soft);color:var(--ink);font-weight:500}
+.status.err{background:var(--bad-bg);color:var(--bad)}
+.spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:sp 0.9s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+.how{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:4px}
+.how div{border-top:2px solid var(--ink);padding-top:8px;font-size:13px;color:var(--muted)}
+.how b{display:block;color:var(--text);font-size:14px}
+@media (max-width:480px){.how{grid-template-columns:1fr}}
+
+.example{font-family:var(--num);font-size:13px;background:var(--paper);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.example .hand{font-family:var(--hand);color:var(--ink);font-size:16px}
+
+/* month bar */
+.monthbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.monthbar .sel{display:flex;gap:8px}
+select{border:1px solid var(--rule);background:var(--card);border-radius:10px;padding:10px 12px;font-size:16px;min-height:44px}
+.monthbar h2{font-size:26px;margin:0;color:var(--ink)}
+
+/* verdict */
+.verdict{border-radius:var(--radius);padding:16px 18px;display:flex;gap:14px;align-items:flex-start}
+.verdict.ok{background:var(--ok-bg);color:var(--ok)}
+.verdict.bad{background:var(--bad-bg);color:var(--bad)}
+.verdict.warn{background:var(--warn-bg);color:var(--warn)}
+.verdict .big{font:800 22px/1.15 var(--display)}
+.verdict .mark{font:800 26px/1 var(--display);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:2.5px solid currentColor;flex:none}
+.issues{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.issue{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:12px;border-radius:10px;border:1px solid var(--rule-soft);background:var(--card);cursor:pointer;text-align:left;width:100%}
+.issue:hover{border-color:var(--rule)}
+.chip{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:999px;padding:3px 8px;align-self:start;white-space:nowrap}
+.chip.bad{background:var(--bad-bg);color:var(--bad)}
+.chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.ok{background:var(--ok-bg);color:var(--ok)}
+.issue .t{font-weight:600}
+.issue .d{grid-column:2;color:var(--muted);font-size:14px}
+.oklist{font-size:14px;color:var(--muted);margin:10px 0 0;padding-left:18px}
+
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--rule-soft);border:1px solid var(--rule-soft);border-radius:10px;overflow:hidden}
+.fig{background:var(--card);padding:12px 14px;min-width:0}
+.fig .l{font-size:13px;color:var(--muted)}
+.fig .v{font:600 18px/1.3 var(--num);font-variant-numeric:tabular-nums}
+.fig.total{grid-column:1/-1}
+.fig.total .v{font:600 30px/1.2 var(--num);color:var(--ink)}
+.fig .w{font-size:13px;margin-top:2px;display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.fig .w .hand{font-family:var(--hand);font-size:16px;color:var(--ink)}
+.fig .w.bad{color:var(--bad)} .fig .w.ok{color:var(--ok)}
+.vat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px;font-size:14px}
+.vat div{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--rule);padding-bottom:4px}
+.vat span:last-child{font-family:var(--num);font-variant-numeric:tabular-nums}
+@media (max-width:480px){.vat{grid-template-columns:1fr}}
+
+/* the sheet */
+.sheet-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch}
+table.sheet{border-collapse:separate;border-spacing:0;font-family:var(--num);font-variant-numeric:tabular-nums;font-size:14px;min-width:100%}
+.sheet th,.sheet td{border-bottom:1px solid var(--rule-soft);border-right:1px solid var(--rule-soft);padding:0;white-space:nowrap}
+.sheet thead th{font-family:var(--body);font-weight:600;font-size:12px;color:var(--muted);padding:6px 8px;text-align:right;background:var(--card);vertical-align:bottom}
+.sheet thead tr.grp th{text-align:center;color:var(--ink);font-size:12px;letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid var(--ink)}
+.sheet thead .zh{display:block;margin:0;font-size:11px}
+.sheet .day{position:sticky;left:0;z-index:2;background:var(--card);text-align:center;font-weight:600;min-width:44px;padding:0 6px;color:var(--ink);border-right:2px solid var(--rule)}
+.sheet thead .day{z-index:3}
+.sheet input{width:5.6em;border:0;background:transparent;text-align:right;padding:9px 8px;font:inherit;font-size:16px;color:var(--text);border-radius:0}
+.sheet input:focus{background:var(--ink-soft);outline:none;box-shadow:inset 0 0 0 2px var(--ink)}
+.sheet input::placeholder{color:var(--rule)}
+.sheet td.w{background:color-mix(in srgb,var(--ink-soft) 55%,transparent)}
+.sheet td.w input{color:var(--ink);font-weight:500}
+.sheet td.calc{padding:0 8px;text-align:right;color:var(--muted);min-width:5.6em}
+.sheet td.calc.strong{color:var(--text);font-weight:600}
+.sheet td.is-bad,.sheet td.is-bad input{background:var(--bad-bg)!important;color:var(--bad)!important}
+.sheet td.is-warn,.sheet td.is-warn input{background:var(--warn-bg)!important;color:var(--warn)!important}
+.sheet tr.closed td:not(.day){background:repeating-linear-gradient(135deg,transparent 0 6px,var(--rule-soft) 6px 7px)}
+.sheet tr.out .day{color:var(--muted);text-decoration:line-through}
+.sheet tfoot td,.sheet tfoot th{border-top:2px solid var(--ink);font-weight:600}
+.sheet tfoot th{font-family:var(--body);font-size:12px;text-align:center;color:var(--ink)}
+.sheet tfoot tr.written th{color:var(--muted);font-weight:500}
+.sheet .gap{border-right:2px solid var(--rule)}
+.flash{animation:fl 1.4s ease-out}
+@keyframes fl{0%{box-shadow:inset 0 0 0 3px var(--bad)}100%{box-shadow:inset 0 0 0 0 transparent}}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+
+/* recap inputs */
+.recap{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.recap label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.recap input{width:100%;border:1px solid var(--rule);border-radius:8px;padding:9px 8px;font-family:var(--hand);font-size:17px;color:var(--ink);background:var(--card);text-align:right}
+@media (max-width:560px){.recap{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* bottom bar */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:color-mix(in srgb,var(--card) 92%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-top:1px solid var(--rule);
+  padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:760px;margin:0 auto;display:flex;gap:8px}
+.bar .btn{flex:1;min-width:0;padding:12px 8px}
+
+/* overlay photo */
+.overlay{position:fixed;inset:0;z-index:40;background:rgba(10,12,20,.92);display:flex;flex-direction:column}
+.overlay .top{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#fff;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.overlay .top button{background:#fff;color:#111;border:0;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+.overlay .scroller{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+.overlay img{display:block;max-width:none}
+
+.field{display:flex;flex-direction:column;gap:6px;font-size:14px;font-weight:500}
+.field input,.field select{border:1px solid var(--rule);border-radius:10px;padding:11px 12px;font-size:16px;background:var(--card);width:100%;font-weight:400}
+.radios{display:flex;flex-direction:column;gap:8px}
+.radios label{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--rule);border-radius:10px;padding:12px;cursor:pointer;font-weight:400}
+.radios input{margin-top:4px}
+.note{font-size:13px;color:var(--muted);background:var(--paper);border-radius:8px;padding:10px 12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(86px + env(safe-area-inset-bottom,0px));z-index:50;background:var(--text);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:14px;max-width:calc(100% - 32px)}
+a{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}.flash{animation:none}}
+/* language switch, row tools */
+.tools{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.lang{display:inline-flex;border:1px solid var(--rule);border-radius:999px;background:var(--card);padding:3px}
+.lang button{border:0;background:transparent;border-radius:999px;padding:6px 14px;font-weight:600;cursor:pointer;color:var(--muted);min-height:36px;font-family:var(--body)}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--card)}
+.sheet tbody .day button{all:unset;box-sizing:border-box;display:block;width:100%;padding:9px 4px;text-align:center;cursor:pointer;font-weight:600;color:var(--ink);text-decoration:underline dotted var(--rule);text-underline-offset:4px}
+.sheet tbody .day button:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.tablebar{display:flex;gap:8px;flex-wrap:wrap}
+.tablebar .btn{min-height:40px;padding:8px 12px}
+.rowsheet{position:fixed;inset:0;z-index:45;background:rgba(10,12,20,.5);display:flex;align-items:flex-end;justify-content:center}
+.rowsheet .panel{background:var(--card);width:100%;max-width:520px;border-radius:16px 16px 0 0;display:flex;flex-direction:column;gap:8px;
+  padding-top:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
+.rowsheet .panel .btn{justify-content:flex-start;text-align:left}
+.rowsheet h2{margin:0;color:var(--ink)}
+:lang(zh) body{font-family:"PingFang SC","Noto Sans SC","Microsoft YaHei",var(--body)}
+/* simplified layout for everyday use */
+body{font-size:17px}
+.mast{align-items:center;padding-block:18px 14px}
+.mast h1{font:800 clamp(26px,7vw,34px)/1.05 var(--display);letter-spacing:-.02em;margin:0;color:var(--ink);text-wrap:balance}
+.tools{flex-direction:row;align-items:center}
+.gear{width:44px;height:44px;display:grid;place-items:center;padding:0;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hero{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;background:var(--ink);color:var(--card);border-radius:22px;padding:44px 20px;cursor:pointer;min-height:260px}
+.hero svg{width:72px;height:72px}
+.hero strong{font:700 clamp(22px,6vw,26px)/1.2 var(--display);text-wrap:balance}
+.hero span{opacity:.85;font-size:16px}
+.hero input{position:absolute;width:1px;height:1px;opacity:0}
+.hero:focus-within{outline:3px solid var(--warn);outline-offset:3px}
+.tip{margin:0;text-align:center;color:var(--muted);font-size:15px}
+.center{display:flex;flex-direction:column;align-items:center;gap:6px}
+.linkbtn{background:none;border:0;color:var(--ink);text-decoration:underline;text-underline-offset:4px;font-size:16px;padding:12px 8px;cursor:pointer;min-height:44px;font-family:var(--body)}
+.resume{min-height:60px;font-size:18px;justify-content:space-between;border-color:var(--ink);color:var(--ink)}
+.resume::after{content:"→";font-size:22px}
+.reading{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:24px 16px}
+.reading img{width:150px;height:195px;object-fit:cover;border-radius:12px;border:1px solid var(--rule)}
+.reading .big{font:600 22px/1.3 var(--display);display:flex;gap:12px;align-items:center;color:var(--ink)}
+.monthline{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.monthline h2{font-size:30px;color:var(--ink);margin:0}
+.sel{display:flex;gap:8px}
+.verdict{padding:20px}
+.verdict .big{font-size:24px}
+.verdict .mark{width:44px;height:44px;font-size:28px}
+.checked{font-size:15px;margin-top:4px;opacity:.9}
+.issue{font-size:16px}
+.issue .d{font-size:15px}
+.totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px}
+.totals .t1{grid-column:1/-1;padding-bottom:12px;border-bottom:1px solid var(--rule-soft)}
+.totals .l{font-size:15px;color:var(--muted)}
+.totals .v{font:600 22px/1.3 var(--num);font-variant-numeric:tabular-nums}
+.totals .t1 .v{font-size:36px;color:var(--ink)}
+.totals .w{font-size:15px;margin-top:2px}
+.totals .w.ok{color:var(--ok)} .totals .w.bad{color:var(--bad)}
+.totals .w .hand{font-family:var(--hand);font-size:18px}
+.tablehead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tablehead h3{font:600 20px/1.2 var(--display);margin:0}
+.tablehead .btn{min-height:44px;padding:8px 14px}
+.sheet input{font-size:17px}
+details.card summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:32px}
+details.card summary::-webkit-details-marker{display:none}
+details.card summary::after{content:"+";font-size:24px;line-height:1;color:var(--ink)}
+details.card[open] summary::after{content:"−"}
+details.card[open] summary{margin-bottom:12px}
+.bar .btn{min-height:56px;font-size:18px}
+.rowsheet .panel .btn{min-height:52px;font-size:17px}
+/* tabs, dashboard, sheets */
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
+.tabs button{border:0;background:transparent;border-radius:10px;min-height:48px;font-weight:600;font-size:17px;color:var(--muted);cursor:pointer;font-family:var(--body)}
+.tabs button[aria-selected="true"]{background:var(--ink);color:var(--card)}
+.corrband{position:sticky;top:0;z-index:30;background:var(--bad);color:var(--card);display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:600;font-size:15px;
+  padding-top:calc(8px + env(safe-area-inset-top,0px));padding-bottom:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.corrband .linkbtn{color:var(--card);padding:6px 4px;min-height:36px}
+.lockband{display:flex;gap:10px;align-items:center;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:12px 14px;font-weight:600}
+.sheet input:disabled{color:var(--text);-webkit-text-fill-color:var(--text);opacity:1}
+.sheet button:disabled{cursor:default;text-decoration:none}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px}
+.kpis .k1{grid-column:1/-1;padding-bottom:12px;border-bottom:1px solid var(--rule-soft)}
+.kpis .l{font-size:15px;color:var(--muted)}
+.kpis .v{font:600 22px/1.3 var(--num);font-variant-numeric:tabular-nums}
+.kpis .k1 .v{font-size:34px;color:var(--ink)}
+.delta{display:inline-block;font:600 14px/1 var(--body);padding:5px 9px;border-radius:999px;margin-top:6px}
+.delta.up{background:var(--ok-bg);color:var(--ok)} .delta.down{background:var(--bad-bg);color:var(--bad)} .delta.flat{background:var(--paper);color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-weight:600;color:var(--muted);cursor:pointer;min-height:36px;font-family:var(--body);font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--ink-soft);color:var(--ink)}
+.chart-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-inline:-4px}
+#chart{display:block}
+#chart .bar-r{fill:var(--ink)}
+#chart .bar-g:hover .bar-r,#chart .bar-g:focus .bar-r{fill:color-mix(in srgb,var(--ink) 80%,var(--card))}
+#chart .bar-g{cursor:pointer;outline:none}
+#chart .bar-g:focus-visible .hit{stroke:var(--ink);stroke-width:2}
+#chart text{font-family:var(--body);fill:var(--muted)}
+#chart .val{font:600 11px var(--num);fill:var(--text)}
+#chart .yoy{font:700 12px var(--body)}
+#chart .yoy.up{fill:var(--ok)} #chart .yoy.down{fill:var(--bad)}
+#chart .ax{font-size:12px}
+#chart .base{stroke:var(--text);stroke-width:1}
+#chart .missing{fill:none;stroke:var(--rule);stroke-dasharray:4 3}
+.mlist,.loglist{list-style:none;margin:0;padding:0}
+.mlist li button{all:unset;box-sizing:border-box;width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto auto 24px;gap:10px;align-items:center;padding:13px 4px;border-bottom:1px solid var(--rule-soft);cursor:pointer}
+.mlist li button:focus-visible{outline:2px solid var(--ink)}
+.mlist .m{font-weight:600}
+.mlist .t{font:500 16px var(--num);font-variant-numeric:tabular-nums;text-align:right}
+.mlist .y{font:600 13px var(--body);min-width:64px;text-align:right}
+.mlist .y.up{color:var(--ok)} .mlist .y.down{color:var(--bad)}
+.mlist .ic{display:flex;gap:2px;color:var(--muted)}
+.loglist li{padding:10px 0;border-bottom:1px solid var(--rule-soft);font-size:15px}
+.sel.big select{flex:1;font-size:18px;min-height:52px}
+.msmsg{margin:0;padding:12px 14px;border-radius:10px;background:var(--warn-bg);color:var(--warn);font-weight:600}
+.msmsg.bad{background:var(--bad-bg);color:var(--bad)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:var(--card)}
+.rowsheet .panel{max-height:92vh;overflow-y:auto}
+.dt-fig{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;margin-bottom:6px}
+.dt-fig .l{font-size:14px;color:var(--muted)} .dt-fig .v{font:600 18px var(--num)}
+.dt-fig .full{grid-column:1/-1} .dt-fig .full .v{font-size:28px;color:var(--ink)}
+.dt-photo{display:flex;gap:12px;align-items:center;margin:8px 0 6px}
+.dt-photo img{width:72px;height:94px;object-fit:cover;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in}
+.corrbox{color:var(--muted);font-size:14px;padding:4px 2px}
+.corrbox summary{cursor:pointer;width:max-content}
+label.btn{cursor:pointer}
+.h3{font:600 20px/1.2 var(--display);margin:0}
+</style>
+
+<div class="corrband" id="corrBand" hidden>
+  <span data-t="corrBand">Mode correction : les mois de plus de 6 mois sont modifiables</span>
+  <button type="button" class="linkbtn" id="btnCorrOff" data-t="corrOff">Quitter</button>
+</div>
+<div class="wrap">
+  <header class="mast">
+    <h1 data-t="appName">Caisse du mois</h1>
+    <div class="tools">
+      <div class="lang" role="group" aria-label="Langue / 语言">
+        <button type="button" id="langZh" lang="zh-CN" aria-pressed="true">中文</button>
+        <button type="button" id="langFr" lang="fr" aria-pressed="false">FR</button>
+      </div>
+      <button class="iconbtn gear" id="btnSettings" type="button">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span class="sr" data-t="settings">Réglages</span>
+      </button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" id="tabPhoto" aria-selected="true" data-t="tabPhoto">Nouveau mois</button>
+    <button type="button" role="tab" id="tabDash" aria-selected="false" data-t="tabDash">Tableau de bord</button>
+  </nav>
+
+  <!-- NEW MONTH : photo -->
+  <section id="stepPhoto" class="stack">
+    <div class="card stack" id="setupCard" hidden>
+      <div>
+        <p class="eyebrow" data-t="onceOnly">À faire une seule fois</p>
+        <h2 data-t="setupTitle">Activer la lecture des photos</h2>
+        <p class="muted small" style="margin:0" data-t="setupDesc"></p>
+      </div>
+      <button class="btn primary" id="btnSetup" type="button" data-t="setupBtn">Configurer</button>
+    </div>
+
+    <label class="hero" id="drop" for="file">
+      <input type="file" id="file" accept="image/*">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.4-2h6.8l1.4 2h1.7A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="4"/></svg>
+      <strong data-t="heroMain">Prendre la photo de la feuille</strong>
+      <span data-t="heroSub">ou la choisir dans vos photos</span>
+    </label>
+    <p class="tip" id="photoTip" data-t="photoTip"></p>
+
+    <div class="reading" id="reading" hidden>
+      <img id="thumb" alt="">
+      <div class="big"><span class="spin"></span><span data-t="readingBig">Lecture de la feuille…</span></div>
+      <p class="muted" style="margin:0"><span data-t="readingSub"></span> <span id="readTimer"></span></p>
+    </div>
+
+    <div class="status err" id="status" hidden></div>
+    <div class="center">
+      <button class="btn primary" id="btnRetry" type="button" data-t="retry" hidden>Réessayer</button>
+      <button class="linkbtn" id="btnManual" type="button" data-t="manualBtn">Remplir à la main, sans photo</button>
+    </div>
+    <p class="note" id="engineNote" hidden></p>
+  </section>
+
+  <!-- REVIEW of one month -->
+  <section id="stepReview" class="stack" hidden>
+    <div class="monthline">
+      <h2 id="monthTitle">—</h2>
+      <button class="linkbtn" id="btnMonthEdit" type="button" data-t="monthChange">Changer le mois</button>
+    </div>
+    <div class="lockband" id="lockBand" hidden>
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <span data-t="lockedRead">Mois de plus de 6 mois : consultation seulement.</span>
+    </div>
+
+    <div id="verdict"></div>
+    <div class="card" id="figs"></div>
+
+    <div class="card stack">
+      <div class="tablehead">
+        <h3 data-t="dayDetail">Détail par jour</h3>
+        <button class="btn" id="btnViewPhoto" type="button" data-t="viewPhoto" hidden>Voir la photo</button>
+      </div>
+      <p class="muted small" style="margin:0" id="tableHelp" data-t="tableHelp"></p>
+      <div class="sheet-wrap" id="sheetWrap"><table class="sheet" id="sheet"></table></div>
+      <div class="tablebar">
+        <button class="btn ghost" id="btnUndo" type="button" data-t="undo" disabled>Annuler</button>
+        <button class="btn ghost" id="colToggle" type="button" hidden></button>
+      </div>
+    </div>
+
+    <details class="card" id="recapBox">
+      <summary data-t="recapTitle">Totaux écrits en bas de la feuille</summary>
+      <p class="muted small" style="margin:0 0 10px" data-t="recapHelp"></p>
+      <div class="recap" id="recap"></div>
+    </details>
+
+    <div class="card stack" id="notesCard" hidden>
+      <p class="eyebrow" style="margin:0" data-t="notesTitle">Remarques de la lecture</p>
+      <p id="notes" style="margin:0"></p>
+    </div>
+
+    <button class="btn primary block" id="btnDone" type="button" data-t="done">Terminé, voir le tableau de bord</button>
+    <div class="center">
+      <button class="linkbtn" id="btnReread" type="button" data-t="reread" hidden>Relire la photo</button>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="stepDash" class="stack" hidden>
+    <div class="card" id="dashEmpty" hidden>
+      <h2 data-t="dashEmptyT">Pas encore d'historique</h2>
+      <p class="muted" style="margin:0" data-t="dashEmptyD"></p>
+    </div>
+    <div id="dashBody" class="stack">
+      <div class="card kpis" id="kpis"></div>
+      <div class="card stack">
+        <div class="tablehead">
+          <h3 data-t="chartTitle">Chiffre d'affaires mensuel</h3>
+          <div class="seg" role="group">
+            <button type="button" id="rng12" aria-pressed="true" data-t="rng12">12 mois</button>
+            <button type="button" id="rngAll" aria-pressed="false" data-t="rngAll">Tout</button>
+          </div>
+        </div>
+        <div class="chart-wrap" id="chartWrap"><svg id="chart" role="img"></svg></div>
+        <p class="muted small" style="margin:0" data-t="chartHelp"></p>
+      </div>
+      <div class="card stack">
+        <h3 class="h3" data-t="monthsTitle">Tous les mois</h3>
+        <ul class="mlist" id="mlist"></ul>
+        <p class="muted small" style="margin:0" data-t="lockRule"></p>
+      </div>
+      <div class="card stack" id="logCard" hidden>
+        <h3 class="h3" data-t="logTitle">Corrections de l'historique</h3>
+        <ul class="loglist" id="loglist"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="stepSettings" class="stack" hidden>
+    <div class="card stack" id="engineSettings">
+      <div>
+        <p class="eyebrow" data-t="settings">Réglages</p>
+        <h2 data-t="setTitle">Service de lecture des photos</h2>
+      </div>
+      <div class="radios">
+        <label><input type="radio" name="prov" value="gemini" id="provGemini">
+          <span><b data-t="gemName"></b><br><span class="muted small" data-t="gemDesc"></span></span></label>
+        <label><input type="radio" name="prov" value="anthropic" id="provAnthropic">
+          <span><b data-t="anthName"></b><br><span class="muted small" data-t="anthDesc"></span></span></label>
+      </div>
+      <label class="field"><span data-t="key">Clé</span><input type="password" id="apiKey" autocomplete="off" spellcheck="false"></label>
+      <label class="field"><span data-t="model">Modèle (facultatif)</span><input type="text" id="apiModel" autocomplete="off" spellcheck="false"></label>
+      <button class="btn primary" id="btnSaveSettings" type="button" data-t="save">Enregistrer</button>
+      <button class="btn ghost" id="btnClearKey" type="button" data-t="clearKey">Effacer la clé</button>
+      <p class="note" data-t="keyNote"></p>
+    </div>
+    <div class="card stack">
+      <h2 data-t="histTitle">Historique</h2>
+      <p class="muted small" style="margin:0" id="histInfo"></p>
+      <label class="btn" for="histFile"><span data-t="histImport">Importer un fichier d'historique</span><input type="file" id="histFile" accept=".json,application/json" class="sr"></label>
+      <button class="btn" id="btnBackup" type="button" data-t="histBackup">Sauvegarder l'historique</button>
+      <p class="note" data-t="histNote"></p>
+    </div>
+    <button class="btn ghost" id="btnCloseSettings" type="button" data-t="close">Fermer</button>
+    <details class="corrbox">
+      <summary data-t="corrLink">Mode correction</summary>
+      <div class="stack" style="gap:10px;margin-top:10px">
+        <p class="muted small" style="margin:0" data-t="corrExplain"></p>
+        <label class="field"><span data-t="corrTypeLabel"></span><input type="text" id="corrWord" autocomplete="off" spellcheck="false" autocapitalize="characters"></label>
+        <button class="btn" id="btnCorrOn" type="button" data-t="corrOn">Activer pour 15 minutes</button>
+      </div>
+    </details>
+  </section>
+</div>
+
+<div class="bar" id="bar" hidden>
+  <div class="in">
+    <button class="btn primary" id="btnShare" type="button" data-t="share" hidden>Envoyer</button>
+    <button class="btn" id="btnPdf" type="button" data-t="pdfBtn">PDF</button>
+  </div>
+</div>
+
+<!-- month question / conflict -->
+<div class="rowsheet" id="monthSheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="msTitle">
+    <h2 id="msTitle" data-t="msTitle">Quel mois est cette feuille ?</h2>
+    <p class="muted small" style="margin:0" id="msSub"></p>
+    <div class="sel big">
+      <select id="msMonth" aria-label="Mois"></select>
+      <select id="msYear" aria-label="Année"></select>
+    </div>
+    <p class="msmsg" id="msMsg" hidden></p>
+    <button class="btn primary" id="msOk" type="button" data-t="ok">Valider</button>
+    <button class="btn danger" id="msReplace" type="button" data-t="replace" hidden>Remplacer</button>
+    <button class="btn ghost" id="msCancel" type="button" data-t="cancel">Annuler</button>
+  </div>
+</div>
+
+<!-- month detail (dashboard) -->
+<div class="rowsheet" id="detailSheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="dtTitle">
+    <h2 id="dtTitle">—</h2>
+    <div id="dtBody"></div>
+    <button class="btn primary" id="dtOpen" type="button" data-t="dtOpen">Ouvrir le détail</button>
+    <button class="btn" id="dtPdf" type="button" data-t="pdfBtn">PDF</button>
+    <button class="btn ghost" id="dtClose" type="button" data-t="close">Fermer</button>
+  </div>
+</div>
+
+<!-- row tools -->
+<div class="rowsheet" id="rowSheet" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="rowTitle">
+    <h2 id="rowTitle">—</h2>
+    <p class="muted small" style="margin:0 0 4px" data-t="rowHelp"></p>
+    <button class="btn" type="button" data-op="swapUp"></button>
+    <button class="btn" type="button" data-op="swapDown"></button>
+    <button class="btn" type="button" data-op="shiftDown"></button>
+    <button class="btn" type="button" data-op="shiftUp"></button>
+    <button class="btn" type="button" data-op="clear"></button>
+    <button class="btn ghost" type="button" data-op="close" data-t="close">Fermer</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="top">
+    <span id="ovTitle">Photo</span>
+    <div class="row" style="gap:6px">
+      <button type="button" id="zoomOut" aria-label="−">−</button>
+      <button type="button" id="zoomIn" aria-label="+">+</button>
+      <button type="button" id="ovClose" data-t="close">Fermer</button>
+    </div>
+  </div>
+  <div class="scroller" id="ovScroll"><img id="ovImg" alt=""></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+
+(() => {
+'use strict';
+/* ---------- language ---------- */
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+const MONTHS_ZH = MONTHS.map((m, i) => `${i + 1}月`);
+const I18N = {
+fr: {
+  appName:'Caisse du mois', tagline:'Photo de la feuille → tableau vérifié → Excel et PDF', settings:'Réglages',
+  draftSaved:'Brouillon enregistré', resume:'Reprendre', dropDraft:'Effacer le brouillon', modifiedAt:'Modifié le {d} à {h}',
+  onceOnly:'À faire une seule fois', setupTitle:'Activer la lecture des photos', setupBtn:'Configurer',
+  setupDesc:'Il faut une clé de service de lecture (gratuite chez Google). Elle reste enregistrée sur ce téléphone uniquement.',
+  step1:'Étape 1', sheetTitle:'La feuille du mois', photoTip:'Photo bien à plat, toute la feuille visible, avec les totaux du bas.',
+  dropMain:'Prendre ou choisir la photo', dropSub:'Appareil photo ou galerie · JPG, PNG, HEIC', readBtn:'Lire le tableau', manualBtn:'Saisir à la main, sans photo',
+  howTitle:"Ce que fait l'outil", how1t:'1 · Lire', how1:'Chaque jour, chaque colonne : chèque, CB, espèces, tickets, en TVA 20 % et 10 %.',
+  how2t:'2 · Vérifier', how2:'Recalcule les totaux et les compare à ceux écrits sur la feuille (jour, colonnes, 卡 / 现 / 合计).',
+  how3t:'3 · Sortir', how3:'Onglet Excel identique au classeur CA Tableau, et le PDF du mois.',
+  exTitle:'Exemple de contrôle', exLeft:'Jour 16 · total écrit', exRight:'calculé 827,68 ✓',
+  month:'Mois', viewPhoto:'Voir la photo', figsTitle:'Le mois en chiffres', tableTitle:'Tableau du mois',
+  tableHelp:'Touchez une case pour la corriger. Touchez un numéro de jour pour déplacer ou vider la ligne. Les colonnes « écrit » sont les totaux notés à la main : ils servent au contrôle.',
+  undo:'Annuler la dernière modification', lgBad:'ne correspond pas', lgWarn:'lecture incertaine', lgW:'total écrit à la main',
+  recapTitle:'Récap écrit sous le tableau', recapHelp:"Les totaux notés en bas de la feuille. Laisser vide s'il n'y en a pas.",
+  notesTitle:'Remarques de la lecture', newMonth:'Nouveau mois', reread:'Relire la photo',
+  setTitle:'Service de lecture des photos', gemName:'Google Gemini · gratuit',
+  gemDesc:'Clé gratuite sur aistudio.google.com. En version gratuite, Google peut utiliser les photos envoyées pour améliorer ses services.',
+  anthName:"Claude (API Anthropic) · payé à l'usage", anthDesc:"Clé sur console.anthropic.com, quelques centimes par photo. Pas d'abonnement.",
+  key:'Clé', keyPh:'Coller la clé ici', model:'Modèle (facultatif)', modelPh:'Par défaut : {m}', save:'Enregistrer', close:'Fermer', clearKey:'Effacer la clé',
+  keyNote:'La clé est gardée uniquement dans ce navigateur, sur cet appareil. La photo est envoyée directement au service choisi, sans passer par un autre serveur.',
+  share:'Envoyer', photo:'Photo', photoAlt:'Photo de la feuille du mois',
+  rowHelp:'Pour corriger des chiffres écrits sur la mauvaise ligne. « Annuler » permet de revenir en arrière.',
+  rowTitle:'Jour {d}', swapUp:'↑ Échanger avec le jour {d}', swapDown:'↓ Échanger avec le jour {d}',
+  shiftDown:"⇣ Décaler d'une ligne vers le bas, à partir d'ici", shiftUp:"⇡ Décaler d'une ligne vers le haut, à partir d'ici", clear:'Vider la ligne',
+  colShow:'Afficher les {n} colonnes vides', colHide:'Masquer les colonnes vides',
+  day:'Jour', vat20:'TVA 20 %', vat10:'TVA 10 %', dayTotal:'Total du jour', written:'écrit', computed:'calculé',
+  chq:'Chèque', cb:'CB', esp:'Espèces', tk:'Tickets', wInputTitle:'Ligne des totaux écrite sur la feuille',
+  figTotal:"Chiffre d'affaires TTC du mois", figCard:'Carte (CB)', figCash:'Espèces', figChq:'Chèques', figTk:'Tickets resto', writtenW:'écrit',
+  ttc10:'TTC 10 %', ht10:'HT 10 %', ttc20:'TTC 20 %', ht20:'HT 20 %', openDays:'Jours ouverts', avg:'Moyenne par jour ouvert',
+  rCarte:'Carte', rEsp:'Espèces', rChq:'Chèques', rTk:'Tickets', rTot:'Total',
+  vBad:'{n} point(s) à vérifier', vBadSub:'Comparer avec la photo, corriger la case, le contrôle se met à jour.',
+  vWarn:'Les totaux concordent', vWarnSub:'{n} remarque(s) à regarder.', vOk:'Tout concorde', vOkSub:'Chaque total écrit correspond au calcul.',
+  chipBad:'Écart', chipWarn:'À voir',
+  prep:'Préparation de la photo…', reading:'Lecture de la feuille en cours…',
+  engClaude:'Lecture par Claude, avec le compte claude.ai de la personne qui ouvre la page.',
+  engNone:'Lecture automatique indisponible ici. La saisie à la main fonctionne.',
+  engReady:'Lecture par {p}. Compter 15 à 60 secondes.', engNoKey:'Lecture automatique pas encore configurée. La saisie à la main fonctionne déjà.',
+  tSaved:'Réglages enregistrés', tKeyDel:'Clé effacée', tDownloaded:'{f} téléchargé', tUnfixed:'Attention : {n} écart(s) pas encore corrigé(s).',
+  tNoDl:'Téléchargement indisponible dans cette vue.', tDlCancel:'Téléchargement annulé.', tShareFail:'Partage impossible : utiliser Excel / PDF.',
+  tUndone:'Modification annulée', tLostRow:'Le jour {d} a été vidé par le décalage : « Annuler » pour revenir.',
+  errImg:'Image illisible. Essayer une photo JPG ou PNG.', errEmpty:'Réponse vide du service de lecture.',
+  errNoTable:"La lecture n'a pas renvoyé de tableau. Réessayer avec une photo plus nette.",
+  errGKey:'Clé Google refusée. Vérifier la clé dans Réglages.', errG403:'Clé Google non autorisée pour ce service (403). Vérifier la clé dans Réglages.',
+  errG429:'Quota gratuit Google atteint pour le moment. Réessayer dans une minute (ou demain).',
+  errModel:'Modèle « {m} » introuvable. Laisser le champ Modèle vide dans Réglages.', errBusy:'Service surchargé. Réessayer dans un instant.',
+  errOther:'Erreur {p} {s} : {m}', errAKey:'Clé Anthropic refusée. Vérifier la clé dans Réglages.',
+  errCredit:'Crédit Anthropic épuisé : en racheter sur console.anthropic.com.',
+  errSampleNA:'Lecture par Claude indisponible ici.', errNotGranted:'Autorisation refusée : la lecture par Claude a besoin de votre accord.',
+  errRate:'Trop de demandes pour le moment. Réessayer plus tard.', errSample:'La lecture par Claude a échoué.',
+  /* checks */
+  L_chq20:'chèque 20 %', L_cb20:'CB 20 %', L_esp20:'espèces 20 %', L_tk20:'tickets 20 %', L_chq10:'chèque 10 %', L_cb10:'CB 10 %', L_esp10:'espèces 10 %', L_tk10:'tickets 10 %',
+  L_w20:'total 20 % écrit', L_wtot:'total du jour écrit',
+  C_w20:'total 20 %', C_wtot:'total général',
+  R_carte:'Carte 卡', R_especes:'Espèces 现', R_cheques:'Chèques 支票', R_tickets:'Tickets 饭票', R_total:'Total 合计',
+  kDay:'Jour {d}', kOut:"{m} n'a que {n} jours : ce jour ne sera pas compté dans l'Excel. Vérifier le mois ou décaler les lignes.",
+  kInvalid:'Valeur non valide.', kT20:'Jour {d} · total TVA 20 %', kTot:'Jour {d} · total du jour',
+  kDiff:'Écrit {w} · calculé {c} · écart {e}.', kNoTot:'Jour {d} · pas de total écrit',
+  kNoTotD:'Aucun total du jour lu sur la feuille : ce jour ne peut pas être contrôlé.',
+  kNoDet:'Jour {d} · détail manquant', kNoDetD:'Total écrit {w} mais aucun montant CB / espèces / chèque / tickets.',
+  kHigh:'Jour {d} · {f} inhabituel', kHighD:"{v} alors que d'habitude c'est autour de {m}. Vérifier sur la photo.",
+  kLow:'Jour {d} · {f} très bas', kLowD:"{v} alors que d'habitude c'est autour de {m}. Un chiffre manque peut-être.",
+  kUnc:'Jour {d} · lecture incertaine', kUncG:'Lecture incertaine', kUncD:'{f} : lu {r}{a} ?', kUncOr:' ou {a}',
+  kCol:'Ligne des totaux · {f}', kColD:'Écrit {w} · somme des jours {c} · écart {e}.', kColOk:'Ligne des totaux · {f} : {v}',
+  kRec:'Récap · {f}', kRecOk:'Récap · {f} : {v}', kCardNote:' (carte = CB 10 % + CB 20 %)',
+  kRecAdd:'Récap · addition', kRecAddD:'Sur la feuille, {p} = {s}, pas {t}.',
+  kNoMonth:'Aucun total du mois écrit', kNoMonthD:"Ni ligne de totaux ni récap trouvés : le total du mois n'a pas pu être comparé à la feuille.",
+  kDaysOk:'{a} totaux journaliers sur {b} correspondent',
+  hPart10:'Le total écrit correspond à la seule partie 10 % : la part 20 % a peut-être été oubliée.',
+  hNeighbor:"L'écart ({a}) est égal au montant {f} du jour {d} : chiffre peut-être sur la mauvaise ligne.",
+  hOneDigit:"Un seul chiffre diffère : erreur de lecture ou d'écriture probable.",
+  notesLang:'French',
+  heroMain:'Prendre la photo de la feuille', heroSub:'ou la choisir dans vos photos', photoTip:'Feuille bien à plat, avec les totaux du bas.',
+  readingBig:'Lecture de la feuille…', readingSub:'Environ 30 secondes, ne fermez pas la page.', retry:'Réessayer', manualBtn:'Remplir à la main, sans photo',
+  resumeBtn:'Continuer {m}', monthChange:'Changer le mois', dayDetail:'Détail par jour',
+  tableHelp:'Touchez un chiffre pour le corriger. Touchez le numéro du jour pour déplacer la ligne.',
+  recapTitle:'Totaux écrits en bas de la feuille', newMonth:'Commencer un autre mois', undo:'Annuler',
+  vOk:'Tout est juste', vOkSub:'Les totaux écrits sur la feuille correspondent au calcul.',
+  vBad:'{n} point(s) à vérifier', vBadSub:'Touchez une ligne ci-dessous, regardez la photo et corrigez le chiffre.',
+  vWarn:'Les totaux sont justes', vWarnSub:'{n} détail(s) à regarder si vous voulez.',
+  vChecked:'{a} jours vérifiés un par un', figTotal:'Total du mois', figCard:'Carte', figCash:'Espèces', figChq:'Chèques', figTk:'Tickets resto', writtenOnSheet:'écrit sur la feuille',
+  engNoKey:'La lecture des photos n\'est pas encore réglée (bouton réglages en haut à droite).',
+  monthTotalsTitle:'Totaux du mois', monthTotalsDetail:'Ils ne tombent pas juste à cause du ou des jours ci-dessus. Corrigez d\'abord les jours.'
+},
+zh: {
+  appName:'每月收银表', tagline:'拍下月表 → 自动核对 → 生成 Excel 和 PDF', settings:'设置',
+  draftSaved:'已保存的草稿', resume:'继续', dropDraft:'删除草稿', modifiedAt:'修改于 {d} {h}',
+  onceOnly:'只需设置一次', setupTitle:'开启照片识别', setupBtn:'去设置',
+  setupDesc:'需要一个识别服务的密钥（谷歌提供免费密钥）。密钥只保存在这部手机上。',
+  step1:'第一步', sheetTitle:'本月的表格', photoTip:'把纸放平拍照，整张表都要拍进去，包括最下面的合计。',
+  dropMain:'拍照或选择照片', dropSub:'相机或相册 · JPG、PNG、HEIC', readBtn:'开始识别', manualBtn:'不用照片，手动输入',
+  howTitle:'这个工具做什么', how1t:'1 · 识别', how1:'读出每天每一栏：支票、兰卡、现金、饭票，分 20% 和 10% 两种税率。',
+  how2t:'2 · 核对', how2:'重新计算所有合计，并和纸上写的合计比对（每天、每栏、卡 / 现 / 合计）。',
+  how3t:'3 · 导出', how3:'生成和 CA Tableau 表格一样的 Excel 页，以及当月的 PDF。',
+  exTitle:'核对示例', exLeft:'16号 · 手写合计', exRight:'计算 827,68 ✓',
+  month:'月份', viewPhoto:'看照片', figsTitle:'本月数字', tableTitle:'本月表格',
+  tableHelp:'点格子可以修改数字。点日期可以移动或清空这一行。“手写”栏是纸上写的合计，用来核对。',
+  undo:'撤销上一步', lgBad:'对不上', lgWarn:'看不清', lgW:'手写的合计',
+  recapTitle:'表格下面写的总数', recapHelp:'纸上最下面写的总数。没有写就空着。',
+  notesTitle:'识别备注', newMonth:'新的月份', reread:'重新识别',
+  setTitle:'照片识别服务', gemName:'谷歌 Gemini · 免费',
+  gemDesc:'在 aistudio.google.com 免费申请密钥。免费版中，谷歌可能会用上传的照片来改进服务。',
+  anthName:'Claude（Anthropic API）· 按次付费', anthDesc:'在 console.anthropic.com 申请密钥，每张照片几分钱，不用订阅。',
+  key:'密钥', keyPh:'把密钥粘贴到这里', model:'模型（可不填）', modelPh:'默认：{m}', save:'保存', close:'关闭', clearKey:'删除密钥',
+  keyNote:'密钥只保存在这台设备的浏览器里。照片直接发送给所选的服务，不经过其他服务器。',
+  share:'发送', photo:'照片', photoAlt:'本月表格的照片',
+  rowHelp:'数字写错行的时候用。点“撤销上一步”可以恢复。',
+  rowTitle:'{d} 号', swapUp:'↑ 和 {d} 号对调', swapDown:'↓ 和 {d} 号对调',
+  shiftDown:'⇣ 从这天起，整体往下移一行', shiftUp:'⇡ 从这天起，整体往上移一行', clear:'清空这一行',
+  colShow:'显示 {n} 个空栏', colHide:'隐藏空栏',
+  day:'日期', vat20:'20% 税', vat10:'10% 税', dayTotal:'当天合计', written:'手写', computed:'计算',
+  chq:'支票', cb:'兰卡', esp:'现金', tk:'饭票', wInputTitle:'纸上写的合计行',
+  figTotal:'本月营业额（含税）', figCard:'卡（兰卡）', figCash:'现金', figChq:'支票', figTk:'饭票', writtenW:'手写',
+  ttc10:'10% 含税', ht10:'10% 不含税', ttc20:'20% 含税', ht20:'20% 不含税', openDays:'营业天数', avg:'每天平均',
+  rCarte:'卡', rEsp:'现金', rChq:'支票', rTk:'饭票', rTot:'合计',
+  vBad:'{n} 处需要检查', vBadSub:'对照照片，改正格子里的数字，核对会自动更新。',
+  vWarn:'合计都对得上', vWarnSub:'有 {n} 处提醒可以看一下。', vOk:'全部正确', vOkSub:'每个手写合计都和计算结果一致。',
+  chipBad:'不对', chipWarn:'看看',
+  prep:'正在处理照片…', reading:'正在识别表格…',
+  engClaude:'由 Claude 识别（使用打开页面的人的 claude.ai 账号）。',
+  engNone:'这里无法自动识别，可以手动输入。',
+  engReady:'由 {p} 识别，大约需要 15 到 60 秒。', engNoKey:'还没有设置自动识别，现在可以先手动输入。',
+  tSaved:'设置已保存', tKeyDel:'密钥已删除', tDownloaded:'{f} 已下载', tUnfixed:'注意：还有 {n} 处没有改正。',
+  tNoDl:'这里无法下载。', tDlCancel:'下载已取消。', tShareFail:'无法分享，请用 Excel / PDF 按钮。',
+  tUndone:'已撤销', tLostRow:'{d} 号被移动清空了，可以点“撤销上一步”恢复。',
+  errImg:'照片打不开，请用 JPG 或 PNG 照片。', errEmpty:'识别服务没有返回内容。',
+  errNoTable:'没有识别出表格，请拍一张更清楚的照片再试。',
+  errGKey:'谷歌密钥无效，请在“设置”里检查。', errG403:'谷歌密钥没有权限（403），请在“设置”里检查。',
+  errG429:'谷歌免费额度暂时用完了，请过一分钟（或明天）再试。',
+  errModel:'找不到模型“{m}”。请在“设置”里把模型一栏清空。', errBusy:'服务太忙，请稍后再试。',
+  errOther:'{p} 出错 {s}：{m}', errAKey:'Anthropic 密钥无效，请在“设置”里检查。',
+  errCredit:'Anthropic 余额用完了，请在 console.anthropic.com 充值。',
+  errSampleNA:'这里无法用 Claude 识别。', errNotGranted:'没有授权：用 Claude 识别需要您同意。',
+  errRate:'请求太多，请稍后再试。', errSample:'Claude 识别失败。',
+  L_chq20:'20% 支票', L_cb20:'20% 兰卡', L_esp20:'20% 现金', L_tk20:'20% 饭票', L_chq10:'10% 支票', L_cb10:'10% 兰卡', L_esp10:'10% 现金', L_tk10:'10% 饭票',
+  L_w20:'20% 手写合计', L_wtot:'当天手写合计',
+  C_w20:'20% 合计', C_wtot:'总合计',
+  R_carte:'卡', R_especes:'现金', R_cheques:'支票', R_tickets:'饭票', R_total:'合计',
+  kDay:'{d} 号', kOut:'{m}只有 {n} 天，这一天不会算进 Excel。请检查月份，或者移动行。',
+  kInvalid:'数字无效。', kT20:'{d} 号 · 20% 税合计', kTot:'{d} 号 · 当天合计',
+  kDiff:'手写 {w} · 计算 {c} · 相差 {e}。', kNoTot:'{d} 号 · 没有手写合计',
+  kNoTotD:'纸上没有读到这天的合计，无法核对。',
+  kNoDet:'{d} 号 · 缺少明细', kNoDetD:'写了合计 {w}，但没有兰卡、现金、支票或饭票的金额。',
+  kHigh:'{d} 号 · {f}不寻常', kHighD:'{v}，平时大约是 {m}。请对照照片检查。',
+  kLow:'{d} 号 · {f}特别低', kLowD:'{v}，平时大约是 {m}。可能少写了一位数。',
+  kUnc:'{d} 号 · 看不清', kUncG:'看不清', kUncD:'{f}：读成 {r}{a}？', kUncOr:'，还是 {a}',
+  kCol:'合计行 · {f}', kColD:'手写 {w} · 每天相加 {c} · 相差 {e}。', kColOk:'合计行 · {f}：{v}',
+  kRec:'总数 · {f}', kRecOk:'总数 · {f}：{v}', kCardNote:'（卡 = 10% 兰卡 + 20% 兰卡）',
+  kRecAdd:'总数 · 加法', kRecAddD:'纸上 {p} = {s}，不是 {t}。',
+  kNoMonth:'没有写本月总数', kNoMonthD:'没有找到合计行或总数，无法和纸上的月总数核对。',
+  kDaysOk:'{b} 个每日合计中，{a} 个对得上',
+  hPart10:'手写合计只等于 10% 的部分，可能漏加了 20% 的部分。',
+  hNeighbor:'相差的 {a} 正好是 {d} 号的{f}，可能写错了行。',
+  hOneDigit:'只差一位数字，可能是看错或写错。',
+  notesLang:'Simplified Chinese',
+  heroMain:'拍下这个月的表', heroSub:'或者从相册里选', photoTip:'纸放平，最下面的合计也要拍进去。',
+  readingBig:'正在读表…', readingSub:'大约 30 秒，请不要关闭页面。', retry:'再试一次', manualBtn:'不用照片，手动填写',
+  resumeBtn:'继续 {m}', monthChange:'改月份', dayDetail:'每天明细',
+  tableHelp:'点数字可以修改。点日期可以移动这一行。',
+  recapTitle:'纸上最下面写的总数', newMonth:'开始新的月份', undo:'撤销',
+  vOk:'全部正确', vOkSub:'纸上写的合计和计算结果一致。',
+  vBad:'有 {n} 处需要检查', vBadSub:'点下面的一行，对照照片，改正数字。',
+  vWarn:'合计都对', vWarnSub:'有 {n} 处可以看一下。',
+  vChecked:'已逐天核对 {a} 天', figTotal:'本月总额', figCard:'卡', figCash:'现金', figChq:'支票', figTk:'饭票', writtenOnSheet:'纸上写的',
+  engNoKey:'还没有设置照片识别（点右上角的设置按钮）。',
+  monthTotalsTitle:'本月总数', monthTotalsDetail:'因为上面那几天不对，所以总数也对不上。先改正那几天。'
+}};
+const LANG_KEY = 'caisse-langue-v1';
+let LANG = (() => { try { const s = localStorage.getItem(LANG_KEY); if (s === 'fr' || s === 'zh') return s; } catch(e){} return 'zh'; })();
+function tr(lang, key, vars){
+  let s = (I18N[lang] && I18N[lang][key]) ?? I18N.fr[key] ?? key;
+  if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? vars[k] : m);
+  if (lang === 'fr' && vars && vars.n != null) s = s.replace(/\((s|e)\)/g, +vars.n > 1 ? '$1' : '').replace(/\(s\)/g, +vars.n > 1 ? 's' : '');
+  return s;
+}
+const t = (key, vars) => tr(LANG, key, vars);
+const monthName = (m, lang = LANG) => lang === 'zh' ? MONTHS_ZH[m - 1] : MONTHS[m - 1];
+const monthYear = (m, y, lang = LANG) => lang === 'zh' ? `${y}年${m}月` : `${MONTHS[m - 1]} ${y}`;
+
+/* ---------- constants ---------- */
+const F20 = [['chq20','chq'],['cb20','cb'],['esp20','esp'],['tk20','tk']];
+const F10 = [['chq10','chq'],['cb10','cb'],['esp10','esp'],['tk10','tk']];
+const INPUTS = [...F20, ...F10].map(f => f[0]);
+const RECAP = [['carte','rCarte'],['especes','rEsp'],['cheques','rChq'],['tickets','rTk'],['total','rTot']];
+const DRAFT_KEY = 'caisse-brouillon-v1', SET_KEY = 'caisse-reglages-v1';
+const DEFAULT_MODEL = {gemini:'gemini-flash-latest', anthropic:'claude-sonnet-5-5'};
+
+const $ = s => document.querySelector(s);
+const inClaude = !!(window.claude && typeof window.claude.use === 'function');
+
+/* ---------- small utils ---------- */
+const r2 = x => Math.round((x + Number.EPSILON) * 100) / 100;
+const eq = (a, b) => Math.abs(a - b) < 0.005;
+const n0 = v => (v == null || isNaN(v)) ? 0 : +v;
+const nf = new Intl.NumberFormat('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+const fmt = x => nf.format(r2(x)).replace(/ | /g, ' ');
+const fmtIn = v => (v == null || v === '' || isNaN(v)) ? '' : (+v).toFixed(2).replace('.', ',');
+const daysIn = (m, y) => new Date(y, m, 0).getDate();
+const store = {
+  get(k){ try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch(e){ return null; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+function parseNum(s){
+  if (s == null) return null;
+  if (typeof s === 'number') return isFinite(s) ? s : null;
+  s = String(s).trim().replace(/[\s  €]/g, '');
+  if (!s || s === '-') return null;
+  const hasC = s.includes(','), hasD = s.includes('.');
+  if (hasC && hasD){ const i = Math.max(s.lastIndexOf(','), s.lastIndexOf('.')); s = s.slice(0, i).replace(/[.,]/g, '') + '.' + s.slice(i + 1); }
+  else if (hasC) s = s.replace(/,/g, '.');
+  if (!/^-?\d*\.?\d*$/.test(s)) return NaN;
+  const v = parseFloat(s);
+  return isNaN(v) ? NaN : v;
+}
+function toast(msg){ const el = $('#toast'); el.textContent = msg; el.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => el.hidden = true, 3600); }
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/* ---------- state ---------- */
+const blankDay = () => ({chq20:null,cb20:null,esp20:null,tk20:null,chq10:null,cb10:null,esp10:null,tk10:null,w20:null,wtot:null,closed:false});
+function newState(m, y){ return {month:m, year:y, days:Array.from({length:32}, blankDay), col:{}, recap:{}, uncertain:{}, notes:'', source:'manual', savedAt:null, showAll:false}; }
+function guessYear(m){ const now = new Date(); return (m > now.getMonth() + 1) ? now.getFullYear() - 1 : now.getFullYear(); }
+function prevMonth(){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return [d.getMonth() + 1, d.getFullYear()]; }
+let S = null;
+let photo = {blob:null, url:null, w:0, h:0};
+
+/* ---------- undo ---------- */
+let undoStack = [];
+function snapshot(){ if (!S) return; undoStack.push(JSON.stringify(S)); if (undoStack.length > 40) undoStack.shift(); $('#btnUndo').disabled = false; }
+function undo(){
+  const s = undoStack.pop(); $('#btnUndo').disabled = !undoStack.length;
+  if (!s) return;
+  S = JSON.parse(s); renderSheet(); refresh(); toast(t('tUndone'));
+}
+
+/* ---------- calculations ---------- */
+function calc(st = S){
+  const n = daysIn(st.month, st.year);
+  const rows = [];
+  const sum = {ttc20:0, ttc10:0, tot:0, ht20:0, ht10:0}; INPUTS.forEach(k => sum[k] = 0);
+  for (let d = 1; d <= 31; d++){
+    const r = st.days[d];
+    const ttc20 = r2(n0(r.chq20) + n0(r.cb20) + n0(r.esp20) + n0(r.tk20));
+    const ttc10 = r2(n0(r.chq10) + n0(r.cb10) + n0(r.esp10) + n0(r.tk10));
+    const tot = r2(ttc20 + ttc10);
+    const has = INPUTS.some(k => n0(r[k]) !== 0);
+    rows[d] = {ttc20, ttc10, tot, has};
+    if (d <= n){ INPUTS.forEach(k => sum[k] += n0(r[k])); sum.ttc20 += ttc20; sum.ttc10 += ttc10; sum.tot += tot; }
+  }
+  Object.keys(sum).forEach(k => sum[k] = r2(sum[k]));
+  sum.ht20 = sum.ttc20 / 1.2; sum.ht10 = sum.ttc10 / 1.1;
+  sum.carte = r2(sum.cb20 + sum.cb10); sum.especes = r2(sum.esp20 + sum.esp10);
+  sum.cheques = r2(sum.chq20 + sum.chq10); sum.tickets = r2(sum.tk20 + sum.tk10);
+  return {n, rows, sum};
+}
+
+function oneDigitApart(a, b){
+  const x = (+a).toFixed(2), y = (+b).toFixed(2);
+  if (x.length !== y.length) return false;
+  let d = 0; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) d++;
+  return d === 1;
+}
+function diffHint(L, d, written, computed, c){
+  const a = Math.abs(r2(written - computed));
+  const hints = [];
+  if (d){
+    if (eq(written, c.rows[d].ttc10) && c.rows[d].ttc20) hints.push(tr(L, 'hPart10'));
+    for (const nd of [d - 1, d + 1]){
+      if (nd < 1 || nd > 31) continue;
+      const k = INPUTS.find(k => n0(S.days[nd][k]) && eq(n0(S.days[nd][k]), a));
+      if (k){ hints.push(tr(L, 'hNeighbor', {a:fmt(a), f:tr(L, 'L_' + k), d:nd})); break; }
+    }
+  }
+  if (oneDigitApart(written, computed)) hints.push(tr(L, 'hOneDigit'));
+  return hints.length ? ' ' + hints.join(' ') : '';
+}
+
+function checks(c, L = LANG){
+  const out = []; const cellsBad = new Set(), cellsWarn = new Set();
+  const add = (level, title, detail, day, cells) => { out.push({level, title, detail, day, cells}); (cells || []).forEach(x => (level === 'bad' ? cellsBad : cellsWarn).add(x)); };
+  const lab = k => tr(L, 'L_' + k);
+  let dayOk = 0, dayChecked = 0;
+  const med = {};
+  INPUTS.forEach(k => { const v = []; for (let d = 1; d <= 31; d++){ const x = n0(S.days[d][k]); if (x > 0) v.push(x); } v.sort((a, b) => a - b); med[k] = v.length >= 5 ? v[Math.floor(v.length / 2)] : null; });
+
+  for (let d = 1; d <= 31; d++){
+    const r = S.days[d], cr = c.rows[d];
+    const anyWritten = r.w20 != null || r.wtot != null;
+    if (d > c.n && (cr.has || anyWritten)){ add('bad', tr(L, 'kDay', {d}), tr(L, 'kOut', {m:monthName(S.month, L), n:c.n}), d, INPUTS.map(k => `${d}.${k}`)); continue; }
+    INPUTS.concat(['w20','wtot']).forEach(k => { if (r[k] != null && (isNaN(r[k]) || r[k] < 0)) add('bad', `${tr(L, 'kDay', {d})} · ${lab(k)}`, tr(L, 'kInvalid'), d, [`${d}.${k}`]); });
+    if (r.w20 != null){
+      dayChecked++;
+      if (!eq(r.w20, cr.ttc20)) add('bad', tr(L, 'kT20', {d}), tr(L, 'kDiff', {w:fmt(r.w20), c:fmt(cr.ttc20), e:fmt(r.w20 - cr.ttc20)}) + diffHint(L, d, r.w20, cr.ttc20, c), d, [`${d}.w20`]);
+      else dayOk++;
+    }
+    if (r.wtot != null){
+      dayChecked++;
+      if (!eq(r.wtot, cr.tot)) add('bad', tr(L, 'kTot', {d}), tr(L, 'kDiff', {w:fmt(r.wtot), c:fmt(cr.tot), e:fmt(r.wtot - cr.tot)}) + diffHint(L, d, r.wtot, cr.tot, c), d, [`${d}.wtot`]);
+      else dayOk++;
+    } else if (cr.has){
+      add('warn', tr(L, 'kNoTot', {d}), tr(L, 'kNoTotD'), d, [`${d}.wtot`]);
+    }
+    if (!cr.has && r.wtot) add('bad', tr(L, 'kNoDet', {d}), tr(L, 'kNoDetD', {w:fmt(r.wtot)}), d, [`${d}.wtot`]);
+    INPUTS.forEach(k => {
+      const v = n0(r[k]), m = med[k];
+      if (!m || !v) return;
+      if (v > 4 * m && v - m > 30) add('warn', tr(L, 'kHigh', {d, f:lab(k)}), tr(L, 'kHighD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`]);
+      else if (m > 100 && v < m / 6) add('warn', tr(L, 'kLow', {d, f:lab(k)}), tr(L, 'kLowD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`]);
+    });
+  }
+  Object.entries(S.uncertain).forEach(([key, u]) => {
+    const [d, k] = key.split('.'); const dn = +d;
+    const fname = dn >= 1 || dn === 0 ? (I18N.fr['L_' + k] ? lab(k) : k) : tr(L, 'R_' + k);
+    const det = tr(L, 'kUncD', {f:fname, r:u && u.r != null ? fmt(u.r) : '?', a:u && u.a != null ? tr(L, 'kUncOr', {a:fmt(u.a)}) : ''});
+    add('warn', dn >= 1 ? tr(L, 'kUnc', {d:dn}) : tr(L, 'kUncG'), det, dn >= 1 ? dn : dn, [key]);
+  });
+
+  const colMap = {...Object.fromEntries(INPUTS.map(k => [k, c.sum[k]])), w20: c.sum.ttc20, wtot: c.sum.tot};
+  const colName = k => (k === 'w20' || k === 'wtot') ? tr(L, 'C_' + k) : lab(k);
+  let colChecked = 0;
+  Object.entries(S.col).forEach(([k, v]) => {
+    if (v == null || isNaN(v)) return; colChecked++;
+    if (!eq(v, colMap[k])) add('bad', tr(L, 'kCol', {f:colName(k)}), tr(L, 'kColD', {w:fmt(v), c:fmt(colMap[k]), e:fmt(v - colMap[k])}), 0, [`0.${k}`]);
+    else out.push({level:'ok', title:tr(L, 'kColOk', {f:colName(k), v:fmt(v)}), day:0});
+  });
+  let recapChecked = 0;
+  RECAP.forEach(([k]) => {
+    const v = S.recap[k]; if (v == null || isNaN(v)) return; recapChecked++;
+    const comp = k === 'total' ? c.sum.tot : c.sum[k];
+    if (!eq(v, comp)) add('bad', tr(L, 'kRec', {f:tr(L, 'R_' + k)}), tr(L, 'kDiff', {w:fmt(v), c:fmt(comp), e:fmt(v - comp)}) + (k === 'carte' ? tr(L, 'kCardNote') : ''), -1, [`-1.${k}`]);
+    else out.push({level:'ok', title:tr(L, 'kRecOk', {f:tr(L, 'R_' + k), v:fmt(v)}), day:-1});
+  });
+  if (S.recap.total != null && !isNaN(S.recap.total)){
+    const parts = ['carte','especes','cheques','tickets'].map(k => S.recap[k]).filter(v => v != null && !isNaN(v));
+    if (parts.length >= 2){ const s = r2(parts.reduce((a, b) => a + b, 0)); if (!eq(s, S.recap.total)) add('warn', tr(L, 'kRecAdd'), tr(L, 'kRecAddD', {p:parts.map(fmt).join(' + '), s:fmt(s), t:fmt(S.recap.total)}), -1, ['-1.total']); }
+  }
+  if (!colChecked && !recapChecked && c.sum.tot) add('warn', tr(L, 'kNoMonth'), tr(L, 'kNoMonthD'), null, []);
+  if (dayChecked) out.push({level:'ok', title:tr(L, 'kDaysOk', {a:dayOk, b:dayChecked}), day:1});
+  let daysVerified = 0;
+  for (let d = 1; d <= c.n; d++){ const r = S.days[d], cr = c.rows[d]; if (r.wtot != null && eq(r.wtot, cr.tot) && (r.w20 == null || eq(r.w20, cr.ttc20))) daysVerified++; }
+  const order = {bad:0, warn:1, ok:2};
+  const pos = d => d == null ? 50 : d === 0 ? 40 : d < 0 ? 45 : d;
+  out.sort((a, b) => order[a.level] - order[b.level] || pos(a.day) - pos(b.day));
+  return {list: out, cellsBad, cellsWarn, daysVerified};
+}
+
+/* ---------- rendering ---------- */
+function fillSelects(){
+  const sm = $('#selMonth'), sy = $('#selYear');
+  sm.innerHTML = MONTHS.map((m, i) => `<option value="${i+1}">${monthName(i + 1)}</option>`).join('');
+  const y = new Date().getFullYear(); let opts = '';
+  for (let k = y - 3; k <= y + 1; k++) opts += `<option value="${k}">${k}${LANG === 'zh' ? '年' : ''}</option>`;
+  sy.innerHTML = opts;
+  if (S){ sm.value = S.month; sy.value = S.year; }
+}
+function inputCell(key, val, cls){
+  return `<td class="${cls || ''}" data-cell="${key}"><input inputmode="decimal" autocomplete="off" data-key="${key}" value="${fmtIn(val)}" aria-label="${key}"${editable ? '' : ' disabled'}></td>`;
+}
+const other = () => LANG === 'zh' ? 'fr' : 'zh';
+const headCell = (lk, last) => `<th class="${last ? 'gap' : ''}">${t(lk)}<span class="zh">${tr(other(), lk)}</span></th>`;
+function renderSheet(){
+  const n = daysIn(S.month, S.year);
+  let lastRow = n; for (let d = n + 1; d <= 31; d++){ const r = S.days[d]; if (INPUTS.some(k => r[k] != null) || r.wtot != null || r.w20 != null) lastRow = d; }
+  const used = k => S.showAll || S.col[k] != null || Object.keys(S.uncertain).some(u => u.endsWith('.' + k)) || S.days.some(r => r[k] != null && r[k] !== 0);
+  const v20 = F20.filter(f => used(f[0]));
+  const show20 = v20.length > 0 || used('w20');
+  const v10 = F10.filter(f => used(f[0]) || f[0] === 'cb10' || f[0] === 'esp10');
+  const hiddenN = (F20.length - v20.length) + (show20 ? 0 : 1) + (F10.length - v10.length);
+  $('#colToggle').hidden = !hiddenN && !S.showAll;
+  $('#colToggle').textContent = S.showAll ? t('colHide') : t('colShow', {n:hiddenN});
+  // Column order for the phone: the 10 % block (where most of the money is) first, then the day total, then the 20 % block.
+  const g10 = v10.length, g20 = show20 ? v20.length + 1 : 0;
+  const head = `<thead>
+    <tr class="grp"><th class="day" rowspan="2">${t('day')}</th><th colspan="${g10}" class="gap">${t('vat10')}</th><th colspan="2" class="gap">${t('dayTotal')}</th>${show20 ? `<th colspan="${g20}">${t('vat20')}</th>` : ''}</tr>
+    <tr>${v10.map((f, i) => headCell(f[1], i === g10 - 1)).join('')}${headCell('computed')}${headCell('written', true)}
+    ${show20 ? v20.map(f => headCell(f[1])).join('') + headCell('written') : ''}</tr></thead>`;
+  let body = '<tbody>';
+  for (let d = 1; d <= lastRow; d++){
+    const r = S.days[d];
+    body += `<tr data-day="${d}" class="${d > n ? 'out' : ''}"><th class="day" scope="row"><button type="button" data-row="${d}"${editable ? '' : ' disabled'} aria-label="${esc(t('rowTitle', {d}))}">${d}</button></th>`;
+    v10.forEach((f, i) => body += inputCell(`${d}.${f[0]}`, r[f[0]], i === g10 - 1 ? 'gap' : ''));
+    body += `<td class="calc strong" data-calc="${d}"></td>`;
+    body += inputCell(`${d}.wtot`, r.wtot, 'w gap');
+    if (show20){ v20.forEach(f => body += inputCell(`${d}.${f[0]}`, r[f[0]])); body += inputCell(`${d}.w20`, r.w20, 'w'); }
+    body += '</tr>';
+  }
+  body += '</tbody>';
+  const foot = `<tfoot>
+    <tr><th class="day">Σ</th>${v10.map((f, i) => `<td class="calc strong ${i === g10 - 1 ? 'gap' : ''}" data-sum="${f[0]}"></td>`).join('')}<td class="calc strong" data-sum="tot"></td><td class="calc gap"></td>
+      ${show20 ? v20.map(f => `<td class="calc strong" data-sum="${f[0]}"></td>`).join('') + `<td class="calc strong" data-sum="ttc20"></td>` : ''}</tr>
+    <tr class="written"><th class="day" title="${esc(t('wInputTitle'))}">${t('written')}</th>${v10.map((f, i) => inputCell(`0.${f[0]}`, S.col[f[0]], 'w' + (i === g10 - 1 ? ' gap' : ''))).join('')}<td class="calc"></td>${inputCell('0.wtot', S.col.wtot, 'w gap')}
+      ${show20 ? v20.map(f => inputCell(`0.${f[0]}`, S.col[f[0]], 'w')).join('') + inputCell('0.w20', S.col.w20, 'w') : ''}</tr>
+  </tfoot>`;
+  $('#sheet').innerHTML = head + body + foot;
+  $('#recap').innerHTML = RECAP.map(([k, lk]) => `<label data-cell="-1.${k}">${t(lk)}<input inputmode="decimal" autocomplete="off" data-key="-1.${k}" value="${fmtIn(S.recap[k])}"${editable ? '' : ' disabled'}></label>`).join('');
+}
+
+function refresh(){
+  const c = calc(), ch = checks(c);
+  $('#monthTitle').textContent = monthYear(S.month, S.year);
+  for (let d = 1; d <= 31; d++){
+    const el = document.querySelector(`[data-calc="${d}"]`); if (el) el.textContent = c.rows[d].has ? fmt(c.rows[d].tot) : '';
+    const tr_ = document.querySelector(`tr[data-day="${d}"]`);
+    if (tr_) tr_.classList.toggle('closed', !c.rows[d].has && S.days[d].wtot == null && d <= c.n);
+  }
+  document.querySelectorAll('[data-sum]').forEach(el => { el.textContent = fmt(c.sum[el.dataset.sum]); });
+  document.querySelectorAll('[data-cell]').forEach(el => {
+    const k = el.dataset.cell;
+    el.classList.toggle('is-bad', ch.cellsBad.has(k));
+    el.classList.toggle('is-warn', !ch.cellsBad.has(k) && ch.cellsWarn.has(k));
+    if (el.tagName === 'LABEL'){ const i = el.querySelector('input'); i.style.borderColor = ch.cellsBad.has(k) ? 'var(--bad)' : ''; }
+  });
+  let bad = ch.list.filter(x => x.level === 'bad'), warn = ch.list.filter(x => x.level === 'warn');
+  // A misread on one day also breaks every month total: show the day, and fold the month totals into one line.
+  const dayBad = bad.filter(x => x.day >= 1), monthBad = bad.filter(x => !(x.day >= 1));
+  if (dayBad.length && monthBad.length > 1){
+    bad = [...dayBad, {level:'bad', title:t('monthTotalsTitle'), detail:t('monthTotalsDetail'), day:0, cells:monthBad[0].cells}];
+  }
+  // Merge "uncertain reading" notes into the matching day problem.
+  warn = warn.filter(wi => {
+    const host = wi.cells && wi.cells[0] && bad.find(x => x.day >= 1 && x.day === wi.day);
+    if (host && /^\d+\./.test(wi.cells[0]) && ch.cellsWarn.has(wi.cells[0])){ if (!host._m){ host.detail += ' ' + wi.detail; host._m = 1; } if (!host.cells.includes(wi.cells[0])) host.cells = [wi.cells[0], ...host.cells]; return false; }
+    return true;
+  });
+  let cls, mark, big, sub;
+  if (bad.length){ cls = 'bad'; mark = '!'; big = t('vBad', {n:bad.length}); sub = t('vBadSub'); }
+  else if (warn.length){ cls = 'warn'; mark = '✓'; big = t('vWarn'); sub = t('vWarnSub', {n:warn.length}); }
+  else { cls = 'ok'; mark = '✓'; big = t('vOk'); sub = t('vOkSub'); }
+  const checked = ch.daysVerified ? `<div class="checked">${esc(t('vChecked', {a:ch.daysVerified}))}</div>` : '';
+  const items = [...bad, ...warn].map(x => `<li><button type="button" class="issue" data-goto="${esc((x.cells && x.cells[0]) || '')}"><span class="chip ${x.level}">${t(x.level === 'bad' ? 'chipBad' : 'chipWarn')}</span><span class="t">${esc(x.title)}</span><span class="d">${esc(x.detail)}</span></button></li>`).join('');
+  $('#verdict').innerHTML = `<div class="stack" style="gap:10px"><div class="verdict ${cls}"><span class="mark">${mark}</span><div><div class="big">${esc(big)}</div><div class="small">${esc(sub)}</div>${checked}</div></div>
+    ${items ? `<ul class="issues">${items}</ul>` : ''}</div>`;
+  const writtenTotal = S.recap.total ?? S.col.wtot;
+  const w = (val, comp) => { if (val == null || isNaN(val)) return ''; const good = eq(val, comp); return `<div class="w ${good ? 'ok' : 'bad'}">${esc(t('writtenOnSheet'))} <span class="hand">${fmt(val)}</span> ${good ? '✓' : '≠'}</div>`; };
+  const fig = (cls, label, v, wr) => `<div class="${cls}"><div class="l">${esc(label)}</div><div class="v">${fmt(v)}${cls === 't1' ? ' €' : ''}</div>${wr || ''}</div>`;
+  $('#figs').className = 'card totals';
+  $('#figs').innerHTML = fig('t1', t('figTotal'), c.sum.tot, w(writtenTotal, c.sum.tot))
+    + fig('', t('figCard'), c.sum.carte, w(S.recap.carte, c.sum.carte))
+    + fig('', t('figCash'), c.sum.especes, w(S.recap.especes, c.sum.especes))
+    + (c.sum.cheques || S.recap.cheques != null ? fig('', t('figChq'), c.sum.cheques, w(S.recap.cheques, c.sum.cheques)) : '')
+    + (c.sum.tickets || S.recap.tickets != null ? fig('', t('figTk'), c.sum.tickets, w(S.recap.tickets, c.sum.tickets)) : '');
+  if (bad.some(x => x.day === -1)) $('#recapBox').open = true;
+  $('#notesCard').hidden = !S.notes; $('#notes').textContent = S.notes || '';
+  return {c, ch};
+}
+
+function gotoCell(key){
+  if (!key) return;
+  const td = document.querySelector(`[data-cell="${CSS.escape(key)}"]`); if (!td) return;
+  td.scrollIntoView({block:'center', inline:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  td.classList.remove('flash'); void td.offsetWidth; td.classList.add('flash');
+  const i = td.querySelector('input'); if (i) setTimeout(() => i.focus({preventScroll:true}), 350);
+}
+
+/* ---------- row tools ---------- */
+let rowDay = null;
+const rowEmpty = d => { const r = S.days[d]; return !r || (INPUTS.every(k => r[k] == null || r[k] === 0) && r.w20 == null && r.wtot == null); };
+function openRow(d){
+  rowDay = d; const n = daysIn(S.month, S.year); const last = Math.max(n, 31);
+  $('#rowTitle').textContent = t('rowTitle', {d});
+  const b = op => document.querySelector(`#rowSheet [data-op="${op}"]`);
+  b('swapUp').textContent = t('swapUp', {d:d - 1}); b('swapUp').disabled = d <= 1;
+  b('swapDown').textContent = t('swapDown', {d:d + 1}); b('swapDown').disabled = d >= last;
+  b('shiftDown').textContent = t('shiftDown'); b('shiftDown').disabled = d >= last;
+  b('shiftUp').textContent = t('shiftUp'); b('shiftUp').disabled = d <= 1;
+  b('clear').textContent = t('clear');
+  $('#rowSheet').hidden = false; b('swapUp').disabled ? b('swapDown').focus() : b('swapUp').focus();
+}
+function closeRow(){ $('#rowSheet').hidden = true; const btn = document.querySelector(`[data-row="${rowDay}"]`); if (btn) btn.focus({preventScroll:true}); }
+function moveUncertain(map){ // map(oldDay) -> newDay | null
+  const u = {}; Object.entries(S.uncertain).forEach(([key, v]) => { const [d, k] = key.split('.'); const dn = +d; if (dn < 1){ u[key] = v; return; } const nd = map(dn); if (nd) u[`${nd}.${k}`] = v; }); S.uncertain = u;
+}
+function rowOp(op){
+  const d = rowDay; if (!d) return;
+  if (op === 'close'){ closeRow(); return; }
+  snapshot();
+  const D = S.days;
+  if (op === 'swapUp' || op === 'swapDown'){
+    const e = op === 'swapUp' ? d - 1 : d + 1;
+    [D[d], D[e]] = [D[e], D[d]]; moveUncertain(x => x === d ? e : x === e ? d : x);
+  } else if (op === 'shiftDown'){
+    const lost = !rowEmpty(31);
+    for (let k = 31; k > d; k--) D[k] = D[k - 1]; D[d] = blankDay(); moveUncertain(x => x < d ? x : (x + 1 <= 31 ? x + 1 : null));
+    if (lost) toast(t('tLostRow', {d:31}));
+  } else if (op === 'shiftUp'){
+    const lost = !rowEmpty(d - 1);
+    for (let k = d - 1; k < 31; k++) D[k] = D[k + 1]; D[31] = blankDay(); moveUncertain(x => x < d - 1 ? x : (x === d - 1 ? null : x - 1));
+    if (lost) toast(t('tLostRow', {d:d - 1}));
+  } else if (op === 'clear'){
+    D[d] = blankDay(); moveUncertain(x => x === d ? null : x);
+  }
+  $('#rowSheet').hidden = true;
+  renderSheet(); refresh();
+  const focusDay = op === 'swapUp' ? d - 1 : op === 'swapDown' || op === 'shiftDown' ? d + 1 : op === 'shiftUp' ? d - 1 : d;
+  const tr_ = document.querySelector(`tr[data-day="${focusDay}"]`);
+  if (tr_){ tr_.querySelectorAll('td').forEach(td => { td.classList.remove('flash'); void td.offsetWidth; td.classList.add('flash'); }); }
+}
+
+async function prepImage(file, maxSide){
+  let src;
+  try { src = await createImageBitmap(file, {imageOrientation:'from-image'}); }
+  catch(e){ src = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(t('errImg'))); im.src = URL.createObjectURL(file); }); }
+  const w = src.width, h = src.height, s = Math.min(1, maxSide / Math.max(w, h));
+  const cv = document.createElement('canvas'); cv.width = Math.round(w * s); cv.height = Math.round(h * s);
+  cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.88));
+  return {blob, w: cv.width, h: cv.height};
+}
+function blobToB64(blob){ return new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1]); fr.onerror = rej; fr.readAsDataURL(blob); }); }
+
+let statusTimer = null;
+let readTimer = null;
+function setStatus(kind, msg){
+  const s = $('#status');
+  if (!kind){ s.hidden = true; return; }
+  s.hidden = false; s.textContent = msg;
+}
+
+/* ---------- reading engines ---------- */
+const PROMPT_BASE = `You are transcribing a PHOTO of a handwritten monthly takings sheet ("feuille de caisse") from a small restaurant in France. Transcribe exactly what is written. Never correct the arithmetic.
+
+SHEET LAYOUT
+- Top-left corner: the month, usually written in Chinese like "9月" (= month 9). A year may or may not appear.
+- First column: day of month (1 to 31), one row per day.
+- LEFT block = sales at VAT 20 %: columns "Chèque", "CB", "ESPECES", "TICKETS", "TOTAL" (this TOTAL is the 20 % total of the day).
+- RIGHT block = sales at VAT 10 %: columns "Chèque", "CB", "ESPECES", "TICKETS", then "TOTAL" = the TOTAL OF THE WHOLE DAY (20 % + 10 % together).
+- Closed days: the row is crossed by a horizontal line, covered by a scribble spanning several rows, or simply empty.
+- A last row marked "合计", "#", "共", "TOTAL" or similar holds the column totals of the month.
+- Below the table there may be a short recap: "卡" = card (CB) total, "现" or "现金" = cash total, "支票" = cheques, "饭票" = meal tickets, "合计"/"共"/"#" = grand total.
+
+READING RULES
+- Decimal separator may be a comma or a dot: "717,73" -> 717.73 ; "5" -> 5 ; "12,80" -> 12.8.
+- Handwriting often sits slightly above or below the printed line. Assign every number to the day of its row. A row's amounts belong together: CB + ESPECES (+ the 20 % amounts) of one day should be close to that day's TOTAL; use this to decide which row a number belongs to, but still transcribe the TOTAL exactly as written.
+- If a number is crossed out and rewritten, use the rewritten value.
+- Ignore stray numbers outside the table (margin notes) but mention them in "notes".
+- Empty cell -> null. Do not invent values. Never replace a written total by your own sum.
+- If a digit is unclear, give your best reading and add an entry to "uncertain".
+
+OUTPUT: exactly one JSON object, no markdown fences, no comments, with this shape:
+{
+ "month": 9,
+ "year": null,
+ "days": [
+  {"day": 1, "closed": false,
+   "t20": {"cheque": null, "cb": null, "especes": null, "tickets": null, "total": null},
+   "t10": {"cheque": null, "cb": 717.73, "especes": 5, "tickets": null},
+   "day_total": 722.73}
+ ],
+ "column_totals": {"t20": {"cheque": null, "cb": 77.8, "especes": null, "tickets": null, "total": 77.8},
+                   "t10": {"cheque": null, "cb": 19148.84, "especes": 306.19, "tickets": null},
+                   "day_total": 19532.83},
+ "recap": {"card": 19226.64, "cash": 306.19, "cheques": null, "tickets": null, "total": 19532.83},
+ "uncertain": [{"day": 16, "field": "t10.cb", "reading": 799.48, "alternative": 793.48}],
+ "notes": "..."
+}
+The numbers above only illustrate the format. Put one entry in "days" for every day row of the sheet, closed days included (closed: true, values null).
+Allowed "field" values in "uncertain": "t20.cheque","t20.cb","t20.especes","t20.tickets","t20.total","t10.cheque","t10.cb","t10.especes","t10.tickets","day_total"; use day 0 for the column totals row and day -1 with "recap.card","recap.cash","recap.cheques","recap.tickets","recap.total" for the recap.`;
+const prompt = () => PROMPT_BASE + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
+
+const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:''};
+const settings = () => Object.assign({}, SETTINGS_DEFAULT, store.get(SET_KEY) || {});
+let sampleNS = null, sampleImages = false, downloadsNS = null;
+function engineReady(){ return inClaude ? !!(sampleNS && sampleImages) : !!settings().key; }
+function engineNote(){
+  const n = $('#engineNote');
+  if (inClaude){ n.hidden = !!(sampleNS && sampleImages); n.textContent = t('engNone'); $('#setupCard').hidden = true; return; }
+  const st = settings();
+  $('#btnSettings').hidden = false;
+  $('#setupCard').hidden = !!st.key;
+  n.hidden = true;
+}
+
+function extractJSON(text){
+  if (!text) throw new Error(t('errEmpty'));
+  const s = text.replace(/```json|```/g, '');
+  const a = s.indexOf('{'), b = s.lastIndexOf('}');
+  if (a < 0 || b <= a) throw new Error(t('errNoTable'));
+  try { return JSON.parse(s.slice(a, b + 1)); } catch(e){ throw new Error(t('errNoTable')); }
+}
+
+async function readGemini(blob, st){
+  const b64 = await blobToB64(blob);
+  const call = model => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method:'POST', headers:{'content-type':'application/json','x-goog-api-key':st.key},
+    body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
+  });
+  let model = st.model || st.autoModel || DEFAULT_MODEL.gemini;
+  let res = await call(model);
+  if (res.status === 404 && !st.model){
+    model = await pickGeminiModel(st.key);
+    if (model){ store.set(SET_KEY, Object.assign(settings(), {autoModel:model})); res = await call(model); }
+  }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){
+    const msg = body?.error?.message || '';
+    if (res.status === 400 && /API key/i.test(msg)) throw new Error(t('errGKey'));
+    if (res.status === 403) throw new Error(t('errG403'));
+    if (res.status === 429) throw new Error(t('errG429'));
+    if (res.status === 404) throw new Error(t('errModel', {m:model}));
+    if (res.status >= 500) throw new Error(t('errBusy'));
+    throw new Error(t('errOther', {p:'Google', s:res.status, m:msg}));
+  }
+  const parts = body?.candidates?.[0]?.content?.parts || [];
+  return parts.filter(p => !p.thought && p.text).map(p => p.text).join('');
+}
+async function pickGeminiModel(key){
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {headers:{'x-goog-api-key':key}});
+    const j = await r.json();
+    const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''));
+    const ver = s => parseFloat((s.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1]);
+    const pick = list => list.sort((a, b) => ver(b) - ver(a))[0];
+    return pick(ok.filter(n => /flash/.test(n) && !/(lite|tts|image|live|audio|embed|exp|preview|thinking)/.test(n)))
+        || pick(ok.filter(n => /flash/.test(n) && !/(tts|image|live|audio|embed)/.test(n))) || null;
+  } catch(e){ return null; }
+}
+async function readAnthropic(blob, st){
+  const b64 = await blobToB64(blob);
+  const model = st.model || DEFAULT_MODEL.anthropic;
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{'content-type':'application/json','x-api-key':st.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body: JSON.stringify({model, max_tokens:8000, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},{type:'text', text:prompt()}]}]})
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok){
+    const msg = body?.error?.message || '';
+    if (res.status === 401) throw new Error(t('errAKey'));
+    if (res.status === 404) throw new Error(t('errModel', {m:model}));
+    if (/credit/i.test(msg)) throw new Error(t('errCredit'));
+    if (res.status === 429 || res.status === 529 || res.status >= 500) throw new Error(t('errBusy'));
+    throw new Error(t('errOther', {p:'Anthropic', s:res.status, m:msg}));
+  }
+  return (body.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+}
+async function readSample(blob){
+  if (!sampleNS) throw new Error(t('errSampleNA'));
+  try { return (await sampleNS(prompt(), {images:[blob], modelTier:'complex'})).text; }
+  catch(e){
+    if (e && e.code === 'not_granted') throw new Error(t('errNotGranted'));
+    if (e && e.code === 'rate_limited') throw new Error(t('errRate'));
+    throw new Error((e && e.message) || t('errSample'));
+  }
+}
+
+function applyReading(j){
+  let m = parseInt(j.month, 10); const monthRead = m >= 1 && m <= 12; if (!monthRead) m = prevMonth()[0];
+  let y = parseInt(j.year, 10); const yearRead = y >= 2000 && y <= 2100; if (!yearRead) y = guessYear(m);
+  S = newState(m, y); S.source = 'photo';
+  const map20 = {cheque:'chq20', cb:'cb20', especes:'esp20', tickets:'tk20', total:'w20'};
+  const map10 = {cheque:'chq10', cb:'cb10', especes:'esp10', tickets:'tk10'};
+  const put = (obj, key, v) => { const x = parseNum(v); if (x != null && !isNaN(x)) obj[key] = x; };
+  (j.days || []).forEach(o => {
+    const d = parseInt(o.day, 10); if (!(d >= 1 && d <= 31)) return;
+    const r = S.days[d];
+    Object.entries(map20).forEach(([a, k]) => put(r, k, o.t20?.[a]));
+    Object.entries(map10).forEach(([a, k]) => put(r, k, o.t10?.[a]));
+    put(r, 'wtot', o.day_total);
+    r.closed = !!o.closed;
+  });
+  const ct = j.column_totals || {};
+  Object.entries(map20).forEach(([a, k]) => put(S.col, k, ct.t20?.[a]));
+  Object.entries(map10).forEach(([a, k]) => put(S.col, k, ct.t10?.[a]));
+  put(S.col, 'wtot', ct.day_total);
+  const rc = j.recap || {};
+  const rmap = {card:'carte', cash:'especes', cheques:'cheques', tickets:'tickets', total:'total'};
+  Object.entries(rmap).forEach(([a, k]) => put(S.recap, k, rc[a]));
+  (j.uncertain || []).forEach(u => {
+    const d = parseInt(u.day, 10); const f = String(u.field || '');
+    let k = null;
+    if (f === 'day_total') k = 'wtot';
+    else if (f.startsWith('t20.')) k = map20[f.slice(4)];
+    else if (f.startsWith('t10.')) k = map10[f.slice(4)];
+    else if (f.startsWith('recap.')) k = rmap[f.slice(6)];
+    if (!k || isNaN(d)) return;
+    const r = parseNum(u.reading), a = parseNum(u.alternative);
+    S.uncertain[`${d}.${k}`] = {r: r != null && !isNaN(r) ? r : null, a: a != null && !isNaN(a) ? a : null};
+  });
+  S.notes = typeof j.notes === 'string' ? j.notes.trim() : '';
+  return {monthRead, yearRead};
+}
+
+/* ---------- PDF writer (no library): same page, font, size and positions as « Juillet 2026.pdf » (Excel print, Arial 9.24 pt) ---------- */
+const AW_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
+const AW_BOLD = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
+function winAnsiCode(ch){
+  const c = ch.charCodeAt(0);
+  if (ch === '€') return 0x80; if (ch === '’') return 0x92; if (ch === '–') return 0x96;
+  if (c === 0x202f || c === 0xa0) return 32;
+  return c > 255 ? 63 : c;
+}
+function glyphW(code, bold){
+  const tbl = bold ? AW_BOLD : AW_REG;
+  if (code >= 32 && code <= 126) return tbl[code - 32];
+  if (code >= 160 && code <= 255){ const base = String.fromCharCode(code).normalize('NFD')[0]; const b = base.charCodeAt(0); if (b >= 32 && b <= 126 && b !== code) return tbl[b - 32]; }
+  return 556;
+}
+const textW = (s, size, bold) => [...s].reduce((a, ch) => a + glyphW(winAnsiCode(ch), bold), 0) * size / 1000;
+function pdfStr(s){
+  let o = '';
+  for (const ch of s){ const x = String.fromCharCode(winAnsiCode(ch)); o += (x === '(' || x === ')' || x === '\\') ? '\\' + x : x; }
+  return '(' + o + ')';
+}
+// Geometry measured on the reference PDF (points, origin bottom-left).
+const PDF_GEO = {
+  W:841.92, H:595.32, size:9.24,
+  rightEdges:[49.281,107.343,165.481,223.561,281.671,329.551,384.631,440.551,488.451,534.13,592.241,641.601,699.64,752.68],
+  rowY:[494.62,483.22,471.82,460.42,449.02,437.62,426.22,414.82,403.39,391.99,380.59,369.19,357.79,346.39,334.99,323.59,312.19,300.79,289.39,277.97,266.57,255.17,243.77,232.37,220.97,209.57,198.17,186.77,175.37,163.97,152.54,141.14],
+  vRules:[[643.06,539.76,0.83997,11.4,'fixed'],[16.68,138.02,0.84,413.98],[643.06,138.02,0.83997,387.67],[50.76,138.02,0.84,401.74],[108.86,138.02,0.84,401.74],[442.03,138.02,0.84,401.74],[754.18,138.02,0.83997,401.74],[166.94,138.02,0.84,387.67],[225.02,138.02,0.84,387.67],[283.13,138.02,0.84003,387.67],[331.01,138.02,0.84,387.67],[386.09,138.02,0.84,387.67],[489.91,138.02,0.84,387.67],[535.63,138.02,0.83997,387.67],[593.71,138.02,0.84003,387.67],[701.14,138.02,0.84003,387.67]],
+  hTop:[[17.52,551.16,626.38,0.84],[17.52,539.76,737.5,0.84],[17.52,525.7,737.5,0.84],[17.52,502.9,737.5,0.84]],
+  hRowsY:[491.5,480.1,468.7,457.3,445.9,434.5,423.1,411.7,400.27,388.87,377.47,366.07,354.67,343.27,331.87,320.47,309.07,297.67,286.27,274.85,263.45,252.05,240.65,229.25,217.85,206.45,195.05,183.65,172.25,160.85,149.42,138.02],
+  labels:[ // [font, x, y, text]
+    ['F1',18.84,542.88,'MOIS '],
+    ['F2',255.5,528.82,'TVA 20 %'],['F2',579.43,528.82,'TVA 10%'],
+    ['F2',52.92,506.02,'TOTALE'],['F2',111.02,506.02,'CHEQUE'],['F2',169.1,506.02,'CB'],['F2',227.18,506.02,'ESPECES'],['F2',285.29,506.02,'TICKETS'],
+    ['F2',333.17,517.66,'TOTAL TTC '],['F2',333.17,506.26,'20'],['F2',388.25,517.66,'TOTAL HT '],['F2',388.25,506.26,'20'],
+    ['F2',444.19,506.02,'CHEQUE'],['F2',492.07,506.02,'CB'],['F2',537.79,506.02,'ESPECES'],['F2',595.87,506.02,'TICKETS'],
+    ['F2',645.22,517.66,'TOTAL TTC '],['F2',645.22,506.26,'10%'],['F2',703.3,517.66,'TOTAL HT '],['F2',703.3,506.26,'10%']
+  ]
+};
+function buildPdf(st = S){
+  const G = PDF_GEO, n = daysIn(st.month, st.year), sz = G.size;
+  const out = [];
+  const T = (font, x, y, s) => out.push(`BT /${font} ${sz} Tf 1 0 0 1 ${x.toFixed(2)} ${y.toFixed(2)} Tm ${pdfStr(s)} Tj ET`);
+  const TR = (font, xr, y, s) => T(font, xr - textW(s, sz, font === 'F1'), y, s);
+  const f2 = x => { const v = r2(x); return (Object.is(v, -0) ? 0 : v).toFixed(2).replace('.', ','); };
+  // Rules: short months hide the last day rows, like the hidden rows in the Excel tabs.
+  const bottom = G.hRowsY[n];               // rule under the TOTAL row
+  const shift = bottom - G.hRowsY[31];      // how far the bottom moves up
+  out.push('0 g');
+  G.vRules.forEach(([x, y, w, h, fixed]) => { if (fixed) out.push(`${x} ${y} ${w} ${h} re f*`); else out.push(`${x} ${(y + shift).toFixed(2)} ${w} ${(h - shift).toFixed(2)} re f*`); });
+  G.hTop.forEach(([x, y, w, h]) => out.push(`${x} ${y} ${w} ${h} re f*`));
+  for (let i = 0; i <= n; i++) out.push(`17.52 ${G.hRowsY[i]} 737.5 0.84 re f*`);
+  // Title row (bold), headers (regular)
+  G.labels.forEach(([f, x, y, s]) => T(f, x, y, s));
+  T('F1', 52.92, 542.88, MONTHS[st.month - 1]);
+  TR('F1', G.rightEdges[3], 542.88, String(st.year));
+  // Day rows
+  const tot = new Array(14).fill(0);
+  for (let d = 1; d <= n; d++){
+    const D = st.days[d]; const v = k => r2(n0(D[k]));
+    const C = v('chq20'), Dv = v('cb20'), E = v('esp20'), F = v('tk20'), I = v('chq10'), J = v('cb10'), K = v('esp10'), Lv = v('tk10');
+    const Gt = C + Dv + E + F, M = I + J + K + Lv;
+    const vals = [d, Gt + M, C, Dv, E, F, Gt, Gt / 1.2, I, J, K, Lv, M, M / 1.1];
+    const y = G.rowY[d - 1];
+    vals.forEach((x, i) => { if (i === 0) TR('F2', G.rightEdges[0], y, String(d)); else { tot[i] += x; TR('F2', G.rightEdges[i], y, f2(x)); } });
+  }
+  const yT = G.rowY[n];
+  T('F2', 18.84, yT, 'TOTAL');
+  tot.forEach((x, i) => { if (i) TR('F2', G.rightEdges[i], yT, f2(x)); });
+  const content = out.join('\n');
+  // Fonts: Arial / Arial Bold referenced by name (as in the Excel export), with Arial widths so spacing is exact.
+  const widths = bold => { const a = []; for (let c = 32; c <= 255; c++) a.push(glyphW(c, bold)); return a.join(' '); };
+  const objs = [];
+  objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2] = '<< /Type /Pages /Kids [5 0 R] /Count 1 >>';
+  objs[3] = `<< /Type /Font /Subtype /TrueType /BaseFont /Arial-BoldMT /FirstChar 32 /LastChar 255 /Widths [${widths(true)}] /Encoding /WinAnsiEncoding /FontDescriptor 8 0 R >>`;
+  objs[4] = `<< /Type /Font /Subtype /TrueType /BaseFont /ArialMT /FirstChar 32 /LastChar 255 /Widths [${widths(false)}] /Encoding /WinAnsiEncoding /FontDescriptor 9 0 R >>`;
+  objs[5] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${G.W} ${G.H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents 6 0 R >>`;
+  objs[6] = `<< /Length ${content.length} >>\nstream\n${content}\nendstream`;
+  objs[7] = `<< /Title ${pdfStr(`${MONTHS[st.month-1]} ${st.year}`)} /Creator (Excel) >>`;
+  objs[8] = '<< /Type /FontDescriptor /FontName /Arial-BoldMT /Flags 262176 /FontBBox [-628 -376 2000 1056] /ItalicAngle 0 /Ascent 905 /Descent -212 /CapHeight 716 /StemV 165 /FontWeight 700 >>';
+  objs[9] = '<< /Type /FontDescriptor /FontName /ArialMT /Flags 32 /FontBBox [-665 -325 2000 1040] /ItalicAngle 0 /Ascent 905 /Descent -212 /CapHeight 716 /StemV 88 /FontWeight 400 >>';
+  let pdf = '%PDF-1.4\n%âãÏÓ\n'; const offs = [];
+  for (let i = 1; i < objs.length; i++){ offs[i] = pdf.length; pdf += `${i} 0 obj\n${objs[i]}\nendobj\n`; }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objs.length}\n0000000000 65535 f \n` + offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+  pdf += `trailer\n<< /Size ${objs.length} /Root 1 0 R /Info 7 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const bytes = new Uint8Array(pdf.length); for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 255;
+  return {blob: new Blob([bytes], {type:'application/pdf'}), filename: `${MONTHS[st.month-1]} ${st.year}.pdf`};
+}
+
+/* ---------- extra text (tabs, dashboard, history, lock) ---------- */
+Object.assign(I18N.fr, {
+  tabPhoto:'Nouveau mois', tabDash:'Tableau de bord',
+  corrBand:'Mode correction : les mois verrouillés sont modifiables', corrOff:'Quitter',
+  lockedRead:'Mois de plus de 6 mois : verrouillé, consultation seulement.', done:'Terminé',
+  dashEmptyT:"Pas encore d'historique", dashEmptyD:"Prenez la photo d'un mois, ou importez le fichier d'historique dans les réglages.",
+  chartTitle:"Chiffre d'affaires mensuel", rng12:'12 mois', rngAll:'Tout',
+  chartHelp:"Touchez une barre pour voir le mois et sa photo. Le pourcentage compare au même mois de l'année d'avant.",
+  monthsTitle:'Tous les mois', lockRule:'Les mois de plus de 6 mois sont verrouillés (cadenas) : on peut les consulter, pas les modifier.',
+  logTitle:"Corrections de l'historique", logLine:'{d} · {m} : total {a} → {b}',
+  kLast:'Dernier mois · {m}', kYtd:'Cumul {y} ({r})', kAvg:'Moyenne des 12 derniers mois',
+  chipYoY:'{p} par rapport à {m}', chipYtd:'{p} par rapport à {y}', noCompare:"pas de comparaison avec l'année d'avant",
+  dtOpen:'Ouvrir le détail', pdfBtn:'PDF', noPhoto:'Pas de photo pour ce mois', lockedShort:'Verrouillé',
+  msTitle:'Quel mois est cette feuille ?', msNotRead:"Le mois ou l'année n'a pas pu être lu sur la photo. Vérifiez puis validez.",
+  msManual:'Pour quel mois remplissez-vous la feuille ?', msMove:'Déplacer ces chiffres vers quel mois ?', msConfirm:'Vérifiez le mois.',
+  msLocked:'Ce mois a plus de 6 mois : il est verrouillé et ne peut pas être remplacé.',
+  msExists:'Ce mois existe déjà dans le tableau de bord. Le remplacer par cette feuille ?',
+  ok:'Valider', replace:'Remplacer', cancel:'Annuler',
+  histTitle:'Historique', histInfo:'{n} mois enregistrés sur ce téléphone, dont {p} avec photo.',
+  histImport:"Importer un fichier d'historique", histBackup:"Sauvegarder l'historique",
+  histNote:"L'historique est gardé sur ce téléphone. Sauvegardez-le de temps en temps et gardez le fichier sur un ordinateur ou dans un mail.",
+  tImported:'{n} mois importés', tImportedSkip:'{n} mois importés ({s} mois verrouillés laissés tels quels)', tImportBad:"Ce fichier n'est pas un historique valide.",
+  tStoreFail:"Impossible d'enregistrer sur ce téléphone (mémoire pleine ?).",
+  corrLink:'Mode correction',
+  corrExplain:'Les mois de plus de 6 mois sont verrouillés pour le contrôle. Ce mode les rend modifiables pendant 15 minutes. Chaque correction est notée dans le tableau de bord.',
+  corrTypeLabel:'Tapez CORRIGER pour confirmer', corrOn:'Activer pour 15 minutes',
+  tCorrOn:'Mode correction activé pour 15 minutes', tCorrBad:'Mot incorrect', tCorrEnded:'Mode correction terminé',
+  monthsShort:'janv.,févr.,mars,avr.,mai,juin,juil.,août,sept.,oct.,nov.,déc.'
+});
+Object.assign(I18N.zh, {
+  tabPhoto:'新的月份', tabDash:'总览',
+  corrBand:'修改模式：锁定的月份现在可以修改', corrOff:'退出',
+  lockedRead:'超过 6 个月的月份已锁定，只能查看。', done:'完成',
+  dashEmptyT:'还没有记录', dashEmptyD:'先拍一个月的表，或者在设置里导入历史文件。',
+  chartTitle:'每月营业额', rng12:'12 个月', rngAll:'全部',
+  chartHelp:'点柱子可以看这个月和照片。百分比是和去年同月相比。',
+  monthsTitle:'所有月份', lockRule:'超过 6 个月的月份会锁定（锁的图标）：可以查看，不能修改。',
+  logTitle:'历史修改记录', logLine:'{d} · {m}：总额 {a} → {b}',
+  kLast:'最近一个月 · {m}', kYtd:'{y}年累计（{r}）', kAvg:'最近 12 个月平均',
+  chipYoY:'比{m} {p}', chipYtd:'比{y}年同期 {p}', noCompare:'没有去年的数据可以比较',
+  dtOpen:'打开明细', pdfBtn:'PDF', noPhoto:'这个月没有照片', lockedShort:'已锁定',
+  msTitle:'这张表是哪个月？', msNotRead:'照片上看不清月份或年份，请确认后点确定。',
+  msManual:'要填写哪个月？', msMove:'把这些数字移到哪个月？', msConfirm:'请确认月份。',
+  msLocked:'这个月份超过 6 个月，已锁定，不能替换。',
+  msExists:'总览里已经有这个月份了。要用这张表替换吗？',
+  ok:'确定', replace:'替换', cancel:'取消',
+  histTitle:'历史记录', histInfo:'这部手机上保存了 {n} 个月，其中 {p} 个有照片。',
+  histImport:'导入历史文件', histBackup:'备份历史记录',
+  histNote:'记录保存在这部手机上。请不时备份，把文件存到电脑或邮件里。',
+  tImported:'已导入 {n} 个月', tImportedSkip:'已导入 {n} 个月（{s} 个锁定月份没有改动）', tImportBad:'这个文件不是有效的历史文件。',
+  tStoreFail:'无法保存到手机（存储空间满了？）。',
+  corrLink:'修改模式',
+  corrExplain:'为了核对，超过 6 个月的月份会被锁定。这个模式可以在 15 分钟内修改它们，每次修改都会记录在总览里。',
+  corrTypeLabel:'输入「修改」确认', corrOn:'开启 15 分钟',
+  tCorrOn:'修改模式已开启 15 分钟', tCorrBad:'输入不正确', tCorrEnded:'修改模式已结束',
+  monthsShort:'1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月'
+});
+const shortMonth = m => t('monthsShort').split(',')[m - 1];
+const fmt0 = x => new Intl.NumberFormat('fr-FR', {maximumFractionDigits:0}).format(Math.round(x)).replace(/ | /g, ' ');
+const pct = p => (p > 0 ? '+' : p < 0 ? '−' : '') + new Intl.NumberFormat('fr-FR', {minimumFractionDigits:1, maximumFractionDigits:1}).format(Math.abs(p * 100)) + (LANG === 'zh' ? '%' : ' %');
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- history: months in localStorage, photos in IndexedDB ---------- */
+const HIST_KEY = 'caisse-historique-v1';
+const pad = n => String(n).padStart(2, '0');
+const keyOf = (m, y) => `${y}-${pad(m)}`;
+const parseKey = k => { const [y, m] = k.split('-').map(Number); return {m, y}; };
+const mIdx = (m, y) => y * 12 + (m - 1);
+let H = (() => { const h = store.get(HIST_KEY); return (h && h.months) ? Object.assign({log:[]}, h) : {months:{}, log:[]}; })();
+function saveHist(){ try { localStorage.setItem(HIST_KEY, JSON.stringify(H)); return true; } catch(e){ toast(t('tStoreFail')); return false; } }
+const idb = (() => {
+  let dbp = null; const mem = {};
+  const open = () => dbp || (dbp = new Promise((res, rej) => { try { const r = indexedDB.open('caisse-du-mois', 1); r.onupgradeneeded = () => r.result.createObjectStore('photos'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); } catch(e){ rej(e); } }));
+  const run = (mode, fn) => open().then(db => new Promise((res, rej) => { const tx = db.transaction('photos', mode); const req = fn(tx.objectStore('photos')); tx.oncomplete = () => res(req ? req.result : undefined); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error); }));
+  return {
+    get: k => run('readonly', s => s.get(k)).then(v => v || mem[k] || null).catch(() => mem[k] || null),
+    put: (k, v) => run('readwrite', s => s.put(v, k)).catch(() => { mem[k] = v; }),
+    del: k => run('readwrite', s => s.delete(k)).catch(() => { delete mem[k]; })
+  };
+})();
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch(e){}
+
+/* ---------- lock (> 6 months) and hidden correction mode ---------- */
+const nowIdx = () => { const d = new Date(); return d.getFullYear() * 12 + d.getMonth(); };
+const isLockedM = (m, y) => mIdx(m, y) < nowIdx() - 6;
+let corrUntil = (() => { try { return +sessionStorage.getItem('caisse-corr') || 0; } catch(e){ return 0; } })();
+let corrSessionId = corrUntil ? corrUntil : 0;
+const corrOn = () => Date.now() < corrUntil;
+const canEdit = (m, y) => !isLockedM(m, y) || corrOn();
+let editable = true, openTotal = null;
+function setCorr(on){
+  corrUntil = on ? Date.now() + 15 * 60 * 1000 : 0; corrSessionId = on ? Date.now() : 0;
+  try { sessionStorage.setItem('caisse-corr', String(corrUntil)); } catch(e){}
+  updCorrBand();
+  if (S && !$('#stepReview').hidden){ editable = canEdit(S.month, S.year); applyEditable(); renderSheet(); refresh(); }
+  if (!$('#stepDash').hidden) renderDash();
+}
+function updCorrBand(){ $('#corrBand').hidden = !corrOn(); }
+
+/* ---------- saving the current month ---------- */
+let saveT = null;
+function changed(){ refresh(); clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); }
+function saveMonth(){
+  if (!S || !S.key || !editable) return;
+  S.savedAt = Date.now();
+  H.months[S.key] = clone(S);
+  if (isLockedM(S.month, S.year)){
+    const id = corrSessionId + ':' + S.key, after = calc(S).sum.tot;
+    let e = H.log.find(x => x.id === id);
+    if (!e){ e = {id, key:S.key, before:openTotal, after, at:Date.now()}; H.log.unshift(e); }
+    e.after = after; e.at = Date.now();
+  }
+  saveHist();
+}
+async function storePhoto(key){
+  if (photo.blob){ await idb.put(key, photo.blob); H.months[key].hasPhoto = true; }
+  else { await idb.del(key); H.months[key].hasPhoto = false; }
+  if (S && S.key === key) S.hasPhoto = H.months[key].hasPhoto;
+  saveHist();
+}
+
+/* ---------- month question ---------- */
+let msResolve = null;
+function msCheck(){
+  const m = +$('#msMonth').value, y = +$('#msYear').value, k = keyOf(m, y);
+  const msg = $('#msMsg'); msg.hidden = true; msg.className = 'msmsg';
+  $('#msOk').hidden = false; $('#msOk').disabled = false; $('#msReplace').hidden = true;
+  if (msResolve && msResolve.mode === 'move' && k === S.key) return 'same';
+  if (!canEdit(m, y)){ msg.textContent = t('msLocked'); msg.className = 'msmsg bad'; msg.hidden = false; $('#msOk').disabled = true; return 'locked'; }
+  if (H.months[k]){ msg.textContent = t('msExists'); msg.hidden = false; $('#msOk').hidden = true; $('#msReplace').hidden = false; return 'exists'; }
+  return 'free';
+}
+function askMonth({m, y, mode, reason}){
+  return new Promise(res => {
+    msResolve = {res, mode};
+    const sm = $('#msMonth'), sy = $('#msYear');
+    sm.innerHTML = MONTHS.map((x, i) => `<option value="${i + 1}">${monthName(i + 1)}</option>`).join('');
+    const cy = new Date().getFullYear(); let o = '';
+    for (let k = cy - 4; k <= cy + 1; k++) o += `<option value="${k}">${k}${LANG === 'zh' ? '年' : ''}</option>`;
+    sy.innerHTML = o; sm.value = m; sy.value = y;
+    $('#msSub').textContent = t(reason === 'unread' ? 'msNotRead' : mode === 'manual' ? 'msManual' : mode === 'move' ? 'msMove' : 'msConfirm');
+    msCheck();
+    $('#monthSheet').hidden = false; sm.focus();
+  });
+}
+function msFinish(val){ $('#monthSheet').hidden = true; const r = msResolve; msResolve = null; if (r) r.res(val); }
+
+async function assignAndOpen(m, y){
+  const key = keyOf(m, y);
+  S.month = m; S.year = y; S.key = key;
+  editable = canEdit(m, y);
+  H.months[key] = clone(Object.assign(S, {savedAt:Date.now()}));
+  saveHist();
+  await storePhoto(key);
+  openTotal = null;
+  openReview();
+}
+
+/* ---------- views ---------- */
+function showStep(which){
+  ['Photo','Review','Dash','Settings'].forEach(n => { $('#step' + n).hidden = which !== n.toLowerCase(); });
+  $('#bar').hidden = which !== 'review';
+  const tab = which === 'dash' ? 'dash' : which === 'settings' ? null : 'photo';
+  $('#tabPhoto').setAttribute('aria-selected', tab === 'photo'); $('#tabDash').setAttribute('aria-selected', tab === 'dash');
+  window.scrollTo(0, 0);
+}
+function applyEditable(){
+  $('#lockBand').hidden = editable; $('#btnMonthEdit').hidden = !editable;
+  $('#btnUndo').hidden = !editable; $('#tableHelp').hidden = !editable;
+}
+function openReview(){
+  undoStack = []; $('#btnUndo').disabled = true;
+  editable = S.key ? canEdit(S.month, S.year) : true;
+  if (openTotal == null) openTotal = calc(S).sum.tot;
+  $('#recapBox').open = false;
+  applyEditable();
+  renderSheet(); refresh();
+  $('#btnViewPhoto').hidden = !photo.url;
+  $('#btnReread').hidden = !photo.blob || !engineReady() || !editable;
+  resetPhotoStep();
+  showStep('review');
+}
+function resetPhotoStep(){ $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false; $('#btnRetry').hidden = true; setStatus(null); }
+async function openMonth(key){
+  const st = H.months[key]; if (!st) return;
+  S = Object.assign(newState(st.month, st.year), clone(st)); S.key = key;
+  if (photo.url) URL.revokeObjectURL(photo.url);
+  photo = {blob:null, url:null, w:0, h:0};
+  const blob = st.hasPhoto ? await idb.get(key) : null;
+  if (blob){ const bmp = await createImageBitmap(blob).catch(() => null); photo = {blob, url:URL.createObjectURL(blob), w:bmp ? bmp.width : 1600, h:bmp ? bmp.height : 2000}; }
+  openTotal = calc(S).sum.tot;
+  openReview();
+}
+
+/* ---------- photo → reading ---------- */
+async function onFile(file){
+  if (!file) return;
+  setStatus(null); $('#btnRetry').hidden = true;
+  try {
+    const p = await prepImage(file, 2200);
+    if (photo.url) URL.revokeObjectURL(photo.url);
+    photo = {blob:p.blob, url:URL.createObjectURL(p.blob), w:p.w, h:p.h};
+    $('#thumb').src = photo.url;
+    if (engineReady()) readPhoto();
+    else if (!inClaude) openSettings();
+    else setStatus('err', t('engNone'));
+  } catch(e){ setStatus('err', e.message || String(e)); }
+  $('#file').value = '';
+}
+async function readPhoto(){
+  if (!photo.blob) return;
+  if (!engineReady()){ if (!inClaude) openSettings(); return; }
+  showStep('photo');
+  $('#drop').hidden = true; $('#photoTip').hidden = true; $('#btnRetry').hidden = true; setStatus(null);
+  $('#reading').hidden = false;
+  const t0 = Date.now(); clearInterval(readTimer);
+  const tick = () => { $('#readTimer').textContent = `${Math.round((Date.now() - t0) / 1000)} s`; };
+  tick(); readTimer = setInterval(tick, 1000);
+  let read;
+  try {
+    let text;
+    if (inClaude) text = await readSample(photo.blob);
+    else { const st = settings(); text = st.provider === 'anthropic' ? await readAnthropic(photo.blob, st) : await readGemini(photo.blob, st); }
+    read = applyReading(extractJSON(text));
+  } catch(e){
+    clearInterval(readTimer);
+    $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false;
+    setStatus('err', (e && e.message) || String(e));
+    $('#btnRetry').hidden = false;
+    return;
+  }
+  clearInterval(readTimer);
+  const need = !read.monthRead || !read.yearRead;
+  const k = keyOf(S.month, S.year);
+  let target = {m:S.month, y:S.year};
+  if (need || H.months[k] || !canEdit(S.month, S.year)){
+    target = await askMonth({m:S.month, y:S.year, mode:'new', reason: need ? 'unread' : 'conflict'});
+    if (!target){ S = null; resetPhotoStep(); return; }
+  }
+  await assignAndOpen(target.m, target.y);
+}
+async function startManual(){
+  const [m, y] = prevMonth();
+  const target = await askMonth({m, y, mode:'manual'});
+  if (!target) return;
+  if (photo.url) URL.revokeObjectURL(photo.url);
+  photo = {blob:null, url:null, w:0, h:0};
+  S = newState(target.m, target.y); S.showAll = true;
+  await assignAndOpen(target.m, target.y);
+}
+async function moveMonth(){
+  if (!editable) return;
+  const target = await askMonth({m:S.month, y:S.year, mode:'move'});
+  if (!target) return;
+  const oldKey = S.key, newKey = keyOf(target.m, target.y);
+  if (newKey === oldKey) return;
+  snapshot();
+  const blob = await idb.get(oldKey);
+  delete H.months[oldKey]; await idb.del(oldKey);
+  S.month = target.m; S.year = target.y; S.key = newKey;
+  H.months[newKey] = clone(S); saveHist();
+  if (blob){ await idb.put(newKey, blob); H.months[newKey].hasPhoto = S.hasPhoto = true; saveHist(); }
+  editable = canEdit(S.month, S.year); applyEditable();
+  renderSheet(); refresh();
+}
+
+/* ---------- dashboard ---------- */
+let dashRange = 12;
+function monthRows(){
+  return Object.keys(H.months).sort().map(k => {
+    const st = H.months[k], s = calc(Object.assign(newState(st.month, st.year), st)).sum;
+    let open = 0; for (let d = 1; d <= daysIn(st.month, st.year); d++) if (INPUTS.some(x => n0(st.days[d] && st.days[d][x]))) open++;
+    return {k, m:st.month, y:st.year, tot:s.tot, s, open, hasPhoto:!!st.hasPhoto, locked:isLockedM(st.month, st.year)};
+  });
+}
+function yoyOf(map, r){ const p = map[keyOf(r.m, r.y - 1)]; return p && p.tot > 0 ? r.tot / p.tot - 1 : null; }
+const lockSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const camSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h1.7l1.4-2h6.8l1.4 2h1.7A2.5 2.5 0 0 1 21 8.5v9A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5z"/><circle cx="12" cy="13" r="4"/></svg>';
+const chip = p => p == null ? '' : `<span class="delta ${p > 0.0005 ? 'up' : p < -0.0005 ? 'down' : 'flat'}">`;
+function renderDash(){
+  const rows = monthRows(); const map = Object.fromEntries(rows.map(r => [r.k, r]));
+  $('#dashEmpty').hidden = rows.length > 0; $('#dashBody').hidden = !rows.length;
+  if (!rows.length) return;
+  const last = rows[rows.length - 1];
+  // KPIs
+  const yl = yoyOf(map, last);
+  const ytd = rows.filter(r => r.y === last.y && r.m <= last.m);
+  const ytdSum = ytd.reduce((a, r) => a + r.tot, 0);
+  const prevYtd = ytd.map(r => map[keyOf(r.m, r.y - 1)]);
+  const ytdP = prevYtd.every(Boolean) ? ytdSum / prevYtd.reduce((a, r) => a + r.tot, 0) - 1 : null;
+  const range = LANG === 'zh' ? `${ytd[0].m}–${last.m}月` : `${shortMonth(ytd[0].m)}–${shortMonth(last.m)}`;
+  const last12 = rows.filter(r => mIdx(r.m, r.y) > mIdx(last.m, last.y) - 12);
+  const avg = last12.reduce((a, r) => a + r.tot, 0) / last12.length;
+  $('#kpis').innerHTML = `
+    <div class="k1"><div class="l">${esc(t('kLast', {m:monthYear(last.m, last.y)}))}</div><div class="v">${fmt0(last.tot)} €</div>
+      ${yl == null ? `<span class="delta flat">${esc(t('noCompare'))}</span>` : `${chip(yl)}${esc(t('chipYoY', {p:pct(yl), m:monthYear(last.m, last.y - 1)}))}</span>`}</div>
+    <div><div class="l">${esc(t('kYtd', {y:last.y, r:range}))}</div><div class="v">${fmt0(ytdSum)}</div>${ytdP == null ? '' : `${chip(ytdP)}${esc(t('chipYtd', {p:pct(ytdP), y:last.y - 1}))}</span>`}</div>
+    <div><div class="l">${esc(t('kAvg'))}</div><div class="v">${fmt0(avg)}</div></div>`;
+  // chart
+  const endI = mIdx(last.m, last.y), startI = dashRange === 12 ? Math.max(endI - 11, mIdx(rows[0].m, rows[0].y)) : mIdx(rows[0].m, rows[0].y);
+  const slots = []; for (let i = startI; i <= endI; i++){ const y = Math.floor(i / 12), m = i % 12 + 1; slots.push({m, y, r:map[keyOf(m, y)]}); }
+  const wrapW = Math.max(300, $('#chartWrap').clientWidth || 340);
+  const step = Math.max(50, (wrapW - 12) / slots.length), barW = Math.min(38, step * 0.7);
+  const W = Math.round(step * slots.length + 12), top = 46, plotH = 190, base = top + plotH, H2 = base + 40;
+  const max = Math.max(...slots.map(s => s.r ? s.r.tot : 0), 1);
+  let g = `<line class="base" x1="4" x2="${W - 4}" y1="${base + .5}" y2="${base + .5}"/>`;
+  slots.forEach((s, i) => {
+    const cx = 6 + step * i + step / 2, x = cx - barW / 2;
+    const yr = s.y % 100, ml = shortMonth(s.m);
+    const lab = `<text class="ax" x="${cx}" y="${base + 17}" text-anchor="middle">${esc(ml)}</text>` + ((s.m === 1 || i === 0) ? `<text class="ax" x="${cx}" y="${base + 33}" text-anchor="middle">${LANG === 'zh' ? s.y + '年' : s.y}</text>` : '');
+    if (!s.r){ g += `<rect class="missing" x="${x}" y="${base - 24}" width="${barW}" height="24" rx="4"/><text x="${cx}" y="${base - 30}" text-anchor="middle">?</text>${lab}`; return; }
+    const h = Math.max(2, s.r.tot / max * plotH), y = base - h, rr = Math.min(4, h / 2);
+    const p = yoyOf(map, s.r);
+    const path = `M${x},${base} V${y + rr} Q${x},${y} ${x + rr},${y} H${x + barW - rr} Q${x + barW},${y} ${x + barW},${y + rr} V${base} Z`;
+    g += `<g class="bar-g" tabindex="0" role="button" data-k="${s.r.k}" aria-label="${esc(monthYear(s.m, s.y))} ${fmt0(s.r.tot)} €${p == null ? '' : ', ' + pct(p)}">
+      <rect class="hit" x="${cx - step / 2 + 1}" y="0" width="${step - 2}" height="${base}" fill="transparent"/>
+      <path class="bar-r" d="${path}"/>
+      <text class="val" x="${cx}" y="${y - 6}" text-anchor="middle">${fmt0(s.r.tot)}</text>
+      ${p == null ? '' : `<text class="yoy ${p > 0.0005 ? 'up' : p < -0.0005 ? 'down' : ''}" x="${cx}" y="${y - 22}" text-anchor="middle">${esc(pct(p))}</text>`}
+    </g>${lab}`;
+  });
+  const svg = $('#chart'); svg.setAttribute('viewBox', `0 0 ${W} ${H2}`); svg.setAttribute('width', W); svg.setAttribute('height', H2);
+  svg.setAttribute('aria-label', t('chartTitle')); svg.innerHTML = g;
+  requestAnimationFrame(() => { $('#chartWrap').scrollLeft = 99999; });
+  $('#rng12').setAttribute('aria-pressed', dashRange === 12); $('#rngAll').setAttribute('aria-pressed', dashRange !== 12);
+  // month list (newest first)
+  $('#mlist').innerHTML = rows.slice().reverse().map(r => { const p = yoyOf(map, r); return `<li><button type="button" data-k="${r.k}">
+    <span class="m">${esc(monthYear(r.m, r.y))}</span><span class="t">${fmt0(r.tot)}</span>
+    <span class="y ${p == null ? '' : p > 0.0005 ? 'up' : p < -0.0005 ? 'down' : ''}">${p == null ? '' : esc(pct(p))}</span>
+    <span class="ic">${r.hasPhoto ? camSvg : ''}${r.locked && !corrOn() ? lockSvg : ''}</span></button></li>`; }).join('');
+  // corrections log
+  $('#logCard').hidden = !H.log.length;
+  $('#loglist').innerHTML = H.log.map(e => { const {m, y} = parseKey(e.key); return `<li>${esc(t('logLine', {d:new Date(e.at).toLocaleString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {dateStyle:'short', timeStyle:'short'}), m:monthYear(m, y), a:fmt(e.before ?? 0), b:fmt(e.after)}))}</li>`; }).join('');
+}
+let dtKey = null, dtPhoto = null;
+async function openDetail(k){
+  const rows = monthRows(); const map = Object.fromEntries(rows.map(r => [r.k, r])); const r = map[k]; if (!r) return;
+  dtKey = k;
+  $('#dtTitle').textContent = monthYear(r.m, r.y);
+  const p = yoyOf(map, r);
+  const f = (cls, l, v) => `<div class="${cls}"><div class="l">${esc(l)}</div><div class="v">${v}</div></div>`;
+  let html = `<div class="dt-fig">${f('full', t('figTotal'), fmt(r.tot) + ' €')}`
+    + `${p == null ? '' : `<div class="full">${chip(p)}${esc(t('chipYoY', {p:pct(p), m:monthYear(r.m, r.y - 1)}))}</span></div>`}`
+    + f('', t('figCard'), fmt(r.s.carte)) + f('', t('figCash'), fmt(r.s.especes))
+    + (r.s.cheques ? f('', t('figChq'), fmt(r.s.cheques)) : '') + (r.s.tickets ? f('', t('figTk'), fmt(r.s.tickets)) : '')
+    + f('', t('openDays'), r.open) + '</div>';
+  html += `<div class="dt-photo" id="dtPhoto"><span class="muted">${esc(t('noPhoto'))}</span></div>`;
+  if (r.locked) html += `<p class="muted small" style="margin:0;display:flex;gap:6px;align-items:center">${lockSvg}${esc(t('lockedShort'))}</p>`;
+  $('#dtBody').innerHTML = html;
+  $('#detailSheet').hidden = false; $('#dtOpen').focus();
+  if (dtPhoto && dtPhoto.url) URL.revokeObjectURL(dtPhoto.url); dtPhoto = null;
+  if (r.hasPhoto){
+    const blob = await idb.get(k);
+    if (blob && dtKey === k){
+      const bmp = await createImageBitmap(blob).catch(() => null);
+      dtPhoto = {blob, url:URL.createObjectURL(blob), w:bmp ? bmp.width : 1600, h:bmp ? bmp.height : 2000};
+      $('#dtPhoto').innerHTML = `<img src="${dtPhoto.url}" alt="${esc(t('photoAlt'))}"><button type="button" class="btn" id="dtSeePhoto">${esc(t('viewPhoto'))}</button>`;
+    }
+  }
+}
+
+/* ---------- history file (import / backup) ---------- */
+const blobToDataURL = b => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(b); });
+const dataURLToBlob = async u => (await fetch(u)).blob();
+async function importHistory(data, quiet){
+  if (!data || typeof data.months !== 'object') throw new Error('bad');
+  let n = 0, s = 0;
+  for (const [k, st] of Object.entries(data.months)){
+    if (!/^\d{4}-\d{2}$/.test(k) || !st || !Array.isArray(st.days) || st.days.length !== 32) continue;
+    const {m, y} = parseKey(k);
+    if (H.months[k] && !canEdit(m, y)){ s++; continue; }
+    const rec = Object.assign(newState(m, y), st, {month:m, year:y, key:k});
+    rec.hasPhoto = false;
+    H.months[k] = rec; n++;
+    const ph = data.photos && data.photos[k];
+    if (ph){ try { await idb.put(k, await dataURLToBlob(ph)); H.months[k].hasPhoto = true; } catch(e){} }
+    else if (st.hasPhoto && await idb.get(k)) H.months[k].hasPhoto = true;
+  }
+  if (Array.isArray(data.log)) data.log.forEach(e => { if (e && e.id && !H.log.some(x => x.id === e.id)) H.log.push(e); });
+  H.log.sort((a, b) => b.at - a.at);
+  saveHist();
+  if (!quiet) toast(s ? t('tImportedSkip', {n, s}) : t('tImported', {n}));
+  return n;
+}
+async function backupHistory(){
+  const photos = {};
+  for (const k of Object.keys(H.months)) if (H.months[k].hasPhoto){ const b = await idb.get(k); if (b) photos[k] = await blobToDataURL(b); }
+  const data = {app:'caisse-du-mois', version:1, exportedAt:new Date().toISOString(), months:H.months, log:H.log, photos};
+  const d = new Date();
+  await saveFile({blob:new Blob([JSON.stringify(data)], {type:'application/json'}), filename:`caisse-historique-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`});
+}
+function histInfo(){
+  const ks = Object.keys(H.months);
+  $('#histInfo').textContent = t('histInfo', {n:ks.length, p:ks.filter(k => H.months[k].hasPhoto).length});
+}
+
+/* ---------- static text ---------- */
+function applyLang(){
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'fr';
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  $('#langFr').setAttribute('aria-pressed', LANG === 'fr'); $('#langZh').setAttribute('aria-pressed', LANG === 'zh');
+  $('#btnSettings').setAttribute('aria-label', t('settings'));
+  $('#apiKey').placeholder = t('keyPh'); updModelPh();
+  $('#thumb').alt = t('photoAlt'); $('#ovImg').alt = t('photoAlt');
+  engineNote(); histInfo();
+  if (S && !$('#stepReview').hidden){ renderSheet(); refresh(); }
+  if (!$('#stepDash').hidden) renderDash();
+}
+function setLang(l){ if (l === LANG) return; LANG = l; try { localStorage.setItem(LANG_KEY, l); } catch(e){} applyLang(); }
+
+/* ---------- saving files ---------- */
+async function saveFile({blob, filename}){
+  if (inClaude){
+    if (!downloadsNS) downloadsNS = await claude.use('downloads');
+    if (!downloadsNS){ toast(t('tNoDl')); return; }
+    try { await downloadsNS.save({filename, data:blob}); } catch(e){ toast(t('tDlCancel')); }
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  toast(t('tDownloaded', {f:filename}));
+}
+function warnBefore(){
+  const bad = checks(calc()).list.filter(x => x.level === 'bad').length;
+  if (bad) toast(t('tUnfixed', {n:bad}));
+}
+
+/* ---------- settings ---------- */
+function openSettings(){
+  $('#engineSettings').hidden = inClaude;
+  const st = settings();
+  $('#provGemini').checked = st.provider !== 'anthropic'; $('#provAnthropic').checked = st.provider === 'anthropic';
+  $('#apiKey').value = st.key || ''; $('#apiModel').value = st.model || '';
+  $('#corrWord').value = '';
+  updModelPh(); histInfo(); showStep('settings');
+}
+function updModelPh(){ const p = $('#provAnthropic').checked ? 'anthropic' : 'gemini'; $('#apiModel').placeholder = t('modelPh', {m:DEFAULT_MODEL[p]}); }
+
+/* ---------- photo viewer ---------- */
+let zoom = 1, viewing = null;
+function openPhoto(p = photo){
+  if (!p || !p.url) return;
+  viewing = p;
+  $('#ovImg').src = p.url; $('#overlay').hidden = false; document.body.style.overflow = 'hidden';
+  zoom = Math.min(1, window.innerWidth / p.w) * 1.6; applyZoom();
+}
+function applyZoom(){ if (!viewing) return; $('#ovImg').style.width = Math.round(viewing.w * zoom) + 'px'; $('#ovTitle').textContent = `${t('photo')} · ${Math.round(zoom * 100)} %`; }
+
+/* ---------- wiring ---------- */
+function init(){
+  $('#langFr').addEventListener('click', () => setLang('fr'));
+  $('#langZh').addEventListener('click', () => setLang('zh'));
+  $('#tabPhoto').addEventListener('click', () => { resetPhotoStep(); showStep('photo'); });
+  $('#tabDash').addEventListener('click', () => { renderDash(); showStep('dash'); });
+  $('#file').addEventListener('change', e => onFile(e.target.files[0]));
+  $('#btnRetry').addEventListener('click', readPhoto);
+  $('#btnReread').addEventListener('click', readPhoto);
+  $('#btnManual').addEventListener('click', startManual);
+  $('#btnMonthEdit').addEventListener('click', moveMonth);
+  $('#btnDone').addEventListener('click', () => { saveMonth(); renderDash(); showStep('dash'); });
+  $('#btnViewPhoto').addEventListener('click', () => openPhoto(photo));
+  $('#ovClose').addEventListener('click', () => { $('#overlay').hidden = true; document.body.style.overflow = ''; });
+  $('#zoomIn').addEventListener('click', () => { zoom = Math.min(4, zoom * 1.3); applyZoom(); });
+  $('#zoomOut').addEventListener('click', () => { zoom = Math.max(0.15, zoom / 1.3); applyZoom(); });
+  $('#colToggle').addEventListener('click', () => { S.showAll = !S.showAll; renderSheet(); refresh(); });
+  $('#btnUndo').addEventListener('click', () => { if (editable){ undo(); clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); } });
+  // month question
+  $('#msMonth').addEventListener('change', msCheck); $('#msYear').addEventListener('change', msCheck);
+  $('#msOk').addEventListener('click', () => { const r = msCheck(); if (r === 'free' || r === 'same') msFinish({m:+$('#msMonth').value, y:+$('#msYear').value}); });
+  $('#msReplace').addEventListener('click', () => msFinish({m:+$('#msMonth').value, y:+$('#msYear').value}));
+  $('#msCancel').addEventListener('click', () => msFinish(null));
+  // row tools
+  $('#sheet').addEventListener('click', e => { const b = e.target.closest('[data-row]'); if (b && editable) openRow(+b.dataset.row); });
+  $('#rowSheet').addEventListener('click', e => { if (e.target.id === 'rowSheet'){ closeRow(); return; } const b = e.target.closest('[data-op]'); if (b){ rowOp(b.dataset.op); if (b.dataset.op !== 'close'){ clearTimeout(saveT); saveT = setTimeout(saveMonth, 350); } } });
+  // dashboard
+  $('#rng12').addEventListener('click', () => { dashRange = 12; renderDash(); });
+  $('#rngAll').addEventListener('click', () => { dashRange = 0; renderDash(); });
+  $('#chart').addEventListener('click', e => { const g = e.target.closest('[data-k]'); if (g) openDetail(g.dataset.k); });
+  $('#chart').addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.k){ e.preventDefault(); openDetail(e.target.dataset.k); } });
+  $('#mlist').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) openDetail(b.dataset.k); });
+  $('#detailSheet').addEventListener('click', e => { if (e.target.id === 'detailSheet') $('#detailSheet').hidden = true; if (e.target.id === 'dtSeePhoto' || (e.target.tagName === 'IMG' && e.target.closest('#dtPhoto'))) openPhoto(dtPhoto); });
+  $('#dtClose').addEventListener('click', () => { $('#detailSheet').hidden = true; });
+  $('#dtOpen').addEventListener('click', () => { $('#detailSheet').hidden = true; openMonth(dtKey); });
+  $('#dtPdf').addEventListener('click', () => { const st = H.months[dtKey]; if (st) saveFile(buildPdf(Object.assign(newState(st.month, st.year), st))); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (!$('#rowSheet').hidden) closeRow(); else if (!$('#monthSheet').hidden) msFinish(null);
+    else if (!$('#detailSheet').hidden) $('#detailSheet').hidden = true; else if (!$('#overlay').hidden) $('#ovClose').click();
+  });
+  // cell edits (table + recap)
+  $('#stepReview').addEventListener('change', e => {
+    const i = e.target; if (!i.dataset || !i.dataset.key || !editable) return;
+    const [d, k] = i.dataset.key.split('.'); const dn = +d; const v = parseNum(i.value);
+    snapshot();
+    if (dn >= 1) S.days[dn][k] = v; else if (dn === 0) S.col[k] = v; else S.recap[k] = v;
+    delete S.uncertain[i.dataset.key];
+    changed();
+  });
+  $('#stepReview').addEventListener('focusout', e => { const i = e.target; if (i.dataset && i.dataset.key){ const v = parseNum(i.value); if (v != null && !isNaN(v)) i.value = fmtIn(v); } });
+  $('#stepReview').addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || !e.target.dataset || !e.target.dataset.key) return;
+    e.preventDefault(); const [d, k] = e.target.dataset.key.split('.');
+    const next = document.querySelector(`[data-key="${+d + 1}.${k}"]`); if (next) next.focus(); else e.target.blur();
+  });
+  $('#verdict').addEventListener('click', e => { const b = e.target.closest('[data-goto]'); if (b) gotoCell(b.dataset.goto); });
+  // PDF (no Excel)
+  $('#btnPdf').addEventListener('click', () => { warnBefore(); saveFile(buildPdf()); });
+  if (!inClaude && navigator.canShare){
+    try { if (navigator.canShare({files:[new File(['x'], 'a.pdf', {type:'application/pdf'})]})) $('#btnShare').hidden = false; } catch(e){}
+  }
+  if ($('#btnShare').hidden) $('#btnPdf').classList.add('primary');
+  $('#btnShare').addEventListener('click', async () => {
+    const p = buildPdf();
+    try { await navigator.share({files:[new File([p.blob], p.filename, {type:'application/pdf'})], title:p.filename}); } catch(e){ if (e.name !== 'AbortError') toast(t('tShareFail')); }
+  });
+  // settings
+  $('#btnSettings').addEventListener('click', openSettings);
+  $('#btnSetup').addEventListener('click', openSettings);
+  $('#provGemini').addEventListener('change', updModelPh); $('#provAnthropic').addEventListener('change', updModelPh);
+  $('#btnSaveSettings').addEventListener('click', () => {
+    const provider = $('#provAnthropic').checked ? 'anthropic' : 'gemini';
+    const prev = settings();
+    store.set(SET_KEY, {provider, key:$('#apiKey').value.trim(), model:$('#apiModel').value.trim(), autoModel: prev.provider === provider ? prev.autoModel : ''});
+    engineNote(); toast(t('tSaved'));
+    showStep('photo');
+    if (photo.blob && engineReady() && !S) readPhoto();
+  });
+  $('#btnCloseSettings').addEventListener('click', () => showStep('photo'));
+  $('#btnClearKey').addEventListener('click', () => { store.set(SET_KEY, Object.assign(settings(), {key:''})); $('#apiKey').value = ''; engineNote(); toast(t('tKeyDel')); });
+  $('#histFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try { await importHistory(JSON.parse(await f.text())); histInfo(); } catch(err){ toast(t('tImportBad')); }
+  });
+  $('#btnBackup').addEventListener('click', backupHistory);
+  $('#btnCorrOn').addEventListener('click', () => {
+    const w = $('#corrWord').value.trim().toUpperCase();
+    if (w === 'CORRIGER' || w === '修改'){ setCorr(true); toast(t('tCorrOn')); renderDash(); showStep('dash'); }
+    else toast(t('tCorrBad'));
+  });
+  $('#btnCorrOff').addEventListener('click', () => { setCorr(false); toast(t('tCorrEnded')); });
+  setInterval(() => { if (!$('#corrBand').hidden && !corrOn()){ setCorr(false); toast(t('tCorrEnded')); } }, 15000);
+
+  // first run: built-in history (only in builds that ship one)
+  (async () => {
+    if (!Object.keys(H.months).length && window.__CAISSE_SEED__){ try { await importHistory(window.__CAISSE_SEED__, true); } catch(e){} }
+    histInfo();
+    if (!$('#stepDash').hidden) renderDash();
+  })();
+
+  applyLang(); updCorrBand(); showStep('photo');
+  if (inClaude){
+    claude.use('sample').then(async s => {
+      sampleNS = s;
+      if (s){ const lim = await s.limits().catch(() => null); sampleImages = !!(lim && lim.images); }
+      engineNote();
+    });
+  }
+  window.__caisse = {applyReading, openReview, buildPdf, setLang, renderDash, importHistory, get state(){ return S; }, get hist(){ return H; }, checks: (l) => checks(calc(), l), setCorr};
+}
+init();
+})();
+</script>
+
+</body>
+</html>
