@@ -459,6 +459,7 @@ label.btn{cursor:pointer}
       </div>
       <label class="field"><span data-t="key">Clé</span><input type="password" id="apiKey" autocomplete="off" spellcheck="false"></label>
       <label class="field"><span data-t="model">Modèle (facultatif)</span><input type="text" id="apiModel" autocomplete="off" spellcheck="false"></label>
+      <label class="field"><span data-t="limitLabel">Lectures de photos par semaine (maximum)</span><input type="number" id="readLimit" min="0" max="50" inputmode="numeric"></label>
       <button class="btn primary" id="btnSaveSettings" type="button" data-t="save">Enregistrer</button>
       <button class="btn ghost" id="btnClearKey" type="button" data-t="clearKey">Effacer la clé</button>
       <p class="note" data-t="keyNote"></p>
@@ -1102,7 +1103,7 @@ The numbers above only illustrate the format. Put one row in "days" for every da
 Each "uncertain" entry is [day, field, reading, alternative]; field is one of "chq20","cb20","esp20","tk20","tot20","chq10","cb10","esp10","tk10","day_total"; use day 0 for the totals row, and day -1 with field "card","cash","cheques","tickets" or "total" for the recap.`;
 const prompt = () => PROMPT_BASE + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
 
-const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:''};
+const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:'', readLimit:5};
 const settings = () => Object.assign({}, SETTINGS_DEFAULT, store.get(SET_KEY) || {});
 let sampleNS = null, sampleImages = false, downloadsNS = null;
 function engineReady(){ return inClaude ? !!(sampleNS && sampleImages) : !!settings().key; }
@@ -1426,6 +1427,8 @@ Object.assign(I18N.fr, {
   errNet:'Connexion internet coupée. Vérifiez le Wi-Fi ou la 4G, puis réessayez.', errTimeout:'La lecture prend trop de temps. Réessayez.',
   errBusy:'Le service de lecture est surchargé en ce moment. Réessayez dans quelques minutes.',
   readingSub:'30 secondes à 1 minute. Restez sur cet écran.',
+  limitLabel:'Lectures de photos par semaine (maximum, 0 = sans limite)',
+  limitReached:'Limite de {n} lectures de photo par semaine atteinte. Prochaine lecture possible {d}. Vous pouvez remplir à la main en attendant.',
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
@@ -1459,6 +1462,8 @@ Object.assign(I18N.zh, {
   errNet:'网络断了，请检查 Wi-Fi 或手机网络后再试。', errTimeout:'识别时间太长，请再试一次。',
   errBusy:'识别服务现在太忙，请过几分钟再试。',
   readingSub:'大约 30 秒到 1 分钟，请停留在这个页面。',
+  limitLabel:'每周最多识别几张照片（0 = 不限）',
+  limitReached:'本周已经识别了 {n} 张照片，达到上限。{d}可以再识别。现在可以先手动填写。',
   readingSend:'正在发送照片…', readingThinking:'正在看表格…', readingDays:'已读 {n} 天', readingRetry:'服务比较慢，正在重试（第 {n} 次）…'
 });
 const shortMonth = m => t('monthsShort').split(',')[m - 1];
@@ -1598,6 +1603,17 @@ async function openMonth(key){
   openReview();
 }
 
+/* ---------- weekly reading limit (counts successful readings only) ---------- */
+const READS_KEY = 'caisse-lectures-v1', WEEK = 7 * 24 * 3600 * 1000;
+const recentReads = () => (store.get(READS_KEY) || []).filter(x => Date.now() - x < WEEK);
+function limitReached(){
+  const lim = +settings().readLimit; if (!lim) return null;
+  const r = recentReads(); if (r.length < lim) return null;
+  const next = new Date(Math.min(...r) + WEEK);
+  return t('limitReached', {n:lim, d:next.toLocaleDateString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {weekday:'long', day:'numeric', month:'long'})});
+}
+function countRead(){ const r = recentReads(); r.push(Date.now()); store.set(READS_KEY, r); }
+
 /* ---------- photo → reading ---------- */
 let retryWhenVisible = false;
 document.addEventListener('visibilitychange', () => {
@@ -1622,6 +1638,7 @@ async function readPhoto(){
   if (!photo.blob) return;
   if (!engineReady()){ if (!inClaude) openSettings(); return; }
   showStep('photo');
+  const lim = limitReached(); if (lim){ resetPhotoStep(); setStatus('err', lim); return; }
   $('#drop').hidden = true; $('#photoTip').hidden = true; $('#btnRetry').hidden = true; setStatus(null);
   $('#reading').hidden = false; hiddenDuringRead = document.hidden; retryWhenVisible = false; $('#readProgress').textContent = t('readingSend');
   const t0 = Date.now(); clearInterval(readTimer);
@@ -1633,6 +1650,7 @@ async function readPhoto(){
     if (inClaude) text = await readSample(photo.blob);
     else { const st = settings(); text = st.provider === 'anthropic' ? await readAnthropic(photo.blob, st) : await readGemini(photo.blob, st); }
     read = applyReading(extractJSON(text));
+    countRead();
   } catch(e){
     clearInterval(readTimer);
     $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false;
@@ -1843,7 +1861,7 @@ function openSettings(){
   $('#engineSettings').hidden = inClaude;
   const st = settings();
   $('#provGemini').checked = st.provider !== 'anthropic'; $('#provAnthropic').checked = st.provider === 'anthropic';
-  $('#apiKey').value = st.key || ''; $('#apiModel').value = st.model || '';
+  $('#apiKey').value = st.key || ''; $('#apiModel').value = st.model || ''; $('#readLimit').value = st.readLimit ?? 5;
   $('#corrWord').value = '';
   updModelPh(); histInfo(); showStep('settings');
 }
@@ -1933,7 +1951,8 @@ function init(){
   $('#btnSaveSettings').addEventListener('click', () => {
     const provider = $('#provAnthropic').checked ? 'anthropic' : 'gemini';
     const prev = settings();
-    store.set(SET_KEY, {provider, key:$('#apiKey').value.trim(), model:$('#apiModel').value.trim(), autoModel: prev.provider === provider ? prev.autoModel : ''});
+    const lim = Math.max(0, Math.min(50, parseInt($('#readLimit').value, 10) || 0));
+    store.set(SET_KEY, {provider, key:$('#apiKey').value.trim(), model:$('#apiModel').value.trim(), autoModel: prev.provider === provider ? prev.autoModel : '', readLimit:lim});
     engineNote(); toast(t('tSaved'));
     showStep('photo');
     if (photo.blob && engineReady() && !S) readPhoto();
