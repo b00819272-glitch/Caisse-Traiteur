@@ -289,6 +289,8 @@ details.card[open] summary{margin-bottom:12px}
 .lockband{display:flex;gap:10px;align-items:center;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:12px 14px;font-weight:600}
 .sheet input:disabled{color:var(--text);-webkit-text-fill-color:var(--text);opacity:1}
 .sheet button:disabled{cursor:default;text-decoration:none}
+.clouddash{margin:0;font-size:14px;color:var(--muted)} .clouddash.ok{color:var(--ok)} .clouddash.bad{color:var(--bad)}
+.note.ok{color:var(--ok)} .note.bad{color:var(--bad)}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px}
 .kpis .k1{grid-column:1/-1;padding-bottom:12px;border-bottom:1px solid var(--rule-soft)}
 .kpis .l{font-size:15px;color:var(--muted)}
@@ -457,6 +459,7 @@ label.btn{cursor:pointer}
       <p class="muted" style="margin:0" data-t="dashEmptyD"></p>
     </div>
     <div id="dashBody" class="stack">
+      <p class="clouddash" id="cloudDash" hidden></p>
       <div class="card kpis" id="kpis"></div>
       <div class="card stack">
         <div class="tablehead">
@@ -500,7 +503,6 @@ label.btn{cursor:pointer}
       </div>
       <label class="field"><span data-t="key">Clé</span><input type="password" id="apiKey" autocomplete="off" spellcheck="false"></label>
       <label class="field"><span data-t="model">Modèle (facultatif)</span><input type="text" id="apiModel" autocomplete="off" spellcheck="false"></label>
-      <label class="field"><span data-t="limitLabel">Lectures de photos par semaine (maximum)</span><input type="number" id="readLimit" min="0" max="50" inputmode="numeric"></label>
       <button class="btn primary" id="btnSaveSettings" type="button" data-t="save">Enregistrer</button>
       <button class="btn ghost" id="btnClearKey" type="button" data-t="clearKey">Effacer la clé</button>
       <p class="note" data-t="keyNote"></p>
@@ -508,6 +510,7 @@ label.btn{cursor:pointer}
     <div class="card stack">
       <h2 data-t="histTitle">Historique</h2>
       <p class="muted small" style="margin:0" id="histInfo"></p>
+      <p class="note" id="cloudInfo" hidden></p>
       <label class="btn" for="histFile"><span data-t="histImport">Importer un fichier d'historique</span><input type="file" id="histFile" accept=".json,application/json" class="sr"></label>
       <button class="btn" id="btnBackup" type="button" data-t="histBackup">Sauvegarder l'historique</button>
       <p class="note" data-t="histNote"></p>
@@ -1181,7 +1184,7 @@ const prompt = (n = 1) => PROMPT_BASE
   + (n > 1 ? `\n\nIMAGES: image 1 is the whole sheet (use it to see which row and column each number is in). Images 2 and 3 are sharper zooms of the top part and the bottom part of the same sheet (they overlap in the middle): use them to read the digits precisely.` : '')
   + `\nWrite "notes" as short remarks in ${t('notesLang')}.`;
 
-const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:'', readLimit:5};
+const SETTINGS_DEFAULT = {provider:'gemini', key:'', model:'', autoModel:''};
 const settings = () => Object.assign({}, SETTINGS_DEFAULT, store.get(SET_KEY) || {});
 let sampleNS = null, sampleImages = false, downloadsNS = null, sampleLim = null;
 function engineReady(){ return inClaude ? !!(sampleNS && sampleImages) : !!settings().key; }
@@ -1478,6 +1481,7 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  cloudOk:'☁ Sauvegardé en ligne à {h}', cloudBusy:'☁ Sauvegarde en ligne en cours…', cloudDenied:"☁ Sauvegarde en ligne impossible : ce compte doit être « Éditeur » de la page (menu Partager).", cloudErr:'☁ Sauvegarde en ligne pas faite pour le moment, elle sera retentée à la prochaine modification.',
   kT20:'Jour {d} — total TVA 20 %', kTot:'Jour {d} — total du jour', kNoTot:'Jour {d} — pas de total écrit', kNoDet:'Jour {d} — détail manquant',
   kHigh:'Jour {d} — {f} inhabituel', kLow:'Jour {d} — {f} très bas', kUnc:'Jour {d} — lecture incertaine', kUncTot:'Total — lecture incertaine', kUncRec:'Récap — lecture incertaine',
   kCol:'Ligne des totaux — {f}', kColOk:'Ligne des totaux — {f} : {v}', kRec:'Récap — {f}', kRecOk:'Récap — {f} : {v}', kRecAdd:'Récap — addition',
@@ -1529,6 +1533,7 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  cloudOk:'☁ 已在线保存（{h}）', cloudBusy:'☁ 正在在线保存…', cloudDenied:'☁ 无法在线保存：这个账号需要是页面的“编辑者”（分享菜单）。', cloudErr:'☁ 暂时没有在线保存，下次修改时会再试。',
   kT20:'{d} 号 — 20% 税合计', kTot:'{d} 号 — 当天合计', kNoTot:'{d} 号 — 没有手写合计', kNoDet:'{d} 号 — 缺少明细',
   kHigh:'{d} 号 — {f}不寻常', kLow:'{d} 号 — {f}特别低', kUnc:'{d} 号 — 看不清', kUncTot:'合计 — 看不清', kUncRec:'总数 — 看不清',
   kCol:'合计行 — {f}', kColOk:'合计行 — {f}：{v}', kRec:'总数 — {f}', kRecOk:'总数 — {f}：{v}', kRecAdd:'总数 — 加法',
@@ -1636,12 +1641,76 @@ function saveMonth(){
     e.after = after; e.at = Date.now();
   }
   saveHist();
+  cloudSaveMonth(S.key, false);
 }
 async function storePhoto(key){
   if (photo.blob){ await idb.put(key, photo.blob); H.months[key].hasPhoto = true; }
   else { await idb.del(key); H.months[key].hasPhoto = false; }
   if (S && S.key === key) S.hasPhoto = H.months[key].hasPhoto;
   saveHist();
+}
+
+/* ---------- online backup (claude.ai version): every change is also written to the artifact's own database ---------- */
+let cloud = null, cloudState = 'off', cloudAt = 0, cloudQ = Promise.resolve();
+const CHUNK = 180000;
+function setCloud(st){ cloudState = st; if (st === 'ok') cloudAt = Date.now(); updCloudInfo(); }
+function updCloudInfo(){
+  const txt = cloudState === 'ok' ? t('cloudOk', {h:new Date(cloudAt).toLocaleTimeString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {hour:'2-digit', minute:'2-digit'})})
+    : cloudState === 'busy' ? t('cloudBusy') : cloudState === 'denied' ? t('cloudDenied') : cloudState === 'err' ? t('cloudErr') : '';
+  ['#cloudInfo', '#cloudDash'].forEach(sel => { const el = $(sel); if (!el) return; el.hidden = !txt; el.textContent = txt; el.className = (sel === '#cloudDash' ? 'clouddash ' : 'note ') + (cloudState === 'ok' ? 'ok' : cloudState === 'busy' ? '' : 'bad'); });
+}
+function cloudRun(fn){
+  if (!cloud) return Promise.resolve();
+  setCloud('busy');
+  cloudQ = cloudQ.then(fn).then(() => setCloud('ok'), e => setCloud(e && e.code === 'invalid_argument' ? 'denied' : 'err'));
+  return cloudQ;
+}
+const forCloud = st => { const o = clone(st); delete o.draft; return o; };
+async function pushMonth(k){ if (H.months[k]) await cloud.doc('months/' + k).set(forCloud(H.months[k])); }
+async function pushLog(){ await cloud.doc('meta/log').set({entries: H.log.slice(0, 400)}); }
+async function pushPhoto(k){
+  const blob = await idb.get(k); if (!blob || !H.months[k]) return;
+  const data = await blobToDataURL(blob), n = Math.ceil(data.length / CHUNK);
+  for (let i = 0; i < n; i++) await cloud.doc(`photos/${k}_${i}`).set({k, i, n, data:data.slice(i * CHUNK, (i + 1) * CHUNK)});
+  H.months[k].photoParts = n; if (S && S.key === k) S.photoParts = n;
+  saveHist(); await pushMonth(k);
+}
+async function pullPhoto(k, n){
+  let data = '';
+  for (let i = 0; i < n; i++){ const d = await cloud.doc(`photos/${k}_${i}`).get(); if (!d.exists) return null; data += d.data().data; }
+  return dataURLToBlob(data);
+}
+async function dropCloudMonth(k, parts){
+  await cloud.doc('months/' + k).delete();
+  for (let i = 0; i < (parts || 0); i++) await cloud.doc(`photos/${k}_${i}`).delete();
+}
+function cloudSaveMonth(k, withPhoto){ return cloudRun(async () => { await pushMonth(k); if (withPhoto && H.months[k] && H.months[k].hasPhoto) await pushPhoto(k); await pushLog(); }); }
+async function cloudInit(){
+  if (!inClaude) return;
+  cloud = await claude.use('db'); if (!cloud){ setCloud('off'); return; }
+  await cloudRun(async () => {
+    const snap = await cloud.collection('months').get();
+    const remote = {}; snap.docs.forEach(d => { if (d.exists) remote[d.id] = d.data(); });
+    const lg = await cloud.doc('meta/log').get();
+    const rlog = lg.exists ? (lg.data().entries || []) : [];
+    for (const [k, st] of Object.entries(remote)){
+      const loc = H.months[k];
+      if (!loc || (st.savedAt || 0) > (loc.savedAt || 0)){ H.months[k] = Object.assign(clone(st), {hasPhoto: !!(loc && loc.hasPhoto)}); }
+    }
+    rlog.forEach(e => { if (e && e.id && !H.log.some(x => x.id === e.id)) H.log.push(e); });
+    H.log.sort((a, b) => b.at - a.at);
+    saveHist();
+    for (const [k, st] of Object.entries(remote)) if (st.photoParts && !(await idb.get(k))){ const b = await pullPhoto(k, st.photoParts); if (b){ await idb.put(k, b); H.months[k].hasPhoto = true; } }
+    for (const k of Object.keys(H.months)){
+      const r = remote[k], loc = H.months[k];
+      if (!r || (loc.savedAt || 0) > (r.savedAt || 0)) await pushMonth(k);
+      if (loc.hasPhoto && !(r && r.photoParts) && !loc.photoParts) await pushPhoto(k);
+    }
+    await pushLog();
+    saveHist();
+  });
+  histInfo();
+  if (!$('#stepDash').hidden) renderDash();
 }
 
 /* ---------- month question ---------- */
@@ -1693,6 +1762,7 @@ async function assignAndOpen(m, y){
     H.months[key] = clone(Object.assign(S, {savedAt:Date.now()}));
     saveHist();
     await storePhoto(key);
+    cloudSaveMonth(key, true);
   }
   openReview();
 }
@@ -1703,6 +1773,7 @@ async function validateDraft(){
   H.log.unshift({id:'r' + Date.now(), type:'replace', key, before, after:calc(S).sum.tot, at:Date.now()});
   saveHist();
   await storePhoto(key);
+  cloudSaveMonth(key, true);
   await dropDraft();
   toast(t('tReplaced', {m:monthYear(S.month, S.year)}));
   renderDash(); showStep('dash');
@@ -1787,16 +1858,6 @@ function failedChecks(){ // plain English, for the second pass
 }
 const VERIFY = (prev, issues) => `\n\nSECOND CHECK. A first transcription of this photo (below) fails these arithmetic checks:\n- ${issues.slice(0, 25).join('\n- ')}\nThe person who filled the sheet usually adds correctly, so a failed check most often means a misread digit, a missed number, or a number put on the wrong row (numbers are often written slightly above or below their line). Look again very carefully at these rows and their neighbours on the photo and correct the transcription. If, after careful re-reading, the sheet itself really contains an addition mistake, keep exactly what is written: never change a number just to make a sum match. Return the complete corrected JSON, in exactly the same compact format.\nFirst transcription:\n${prev}`;
 
-/* ---------- weekly reading limit (counts successful readings only) ---------- */
-const READS_KEY = 'caisse-lectures-v1', WEEK = 7 * 24 * 3600 * 1000;
-const recentReads = () => (store.get(READS_KEY) || []).filter(x => Date.now() - x < WEEK);
-function limitReached(){
-  const lim = +settings().readLimit; if (!lim) return null;
-  const r = recentReads(); if (r.length < lim) return null;
-  const next = new Date(Math.min(...r) + WEEK);
-  return t('limitReached', {n:lim, d:next.toLocaleDateString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {weekday:'long', day:'numeric', month:'long'})});
-}
-function countRead(){ const r = recentReads(); r.push(Date.now()); store.set(READS_KEY, r); }
 
 /* ---------- photo → reading ---------- */
 let retryWhenVisible = false;
@@ -1822,7 +1883,6 @@ async function readPhoto(){
   if (!photo.blob) return;
   if (!engineReady()){ if (!inClaude) openSettings(); return; }
   showStep('photo');
-  const lim = limitReached(); if (lim){ resetPhotoStep(); setStatus('err', lim); return; }
   $('#drop').hidden = true; $('#photoTip').hidden = true; $('#btnRetry').hidden = true; setStatus(null);
   $('#reading').hidden = false; hiddenDuringRead = document.hidden; retryWhenVisible = false; $('#readProgress').textContent = t('readingSend');
   const t0 = Date.now(); clearInterval(readTimer);
@@ -1833,7 +1893,6 @@ async function readPhoto(){
     const blobs = photo.parts || [photo.blob];
     const text = await callReader(blobs, prompt(blobs.length));
     read = applyReading(extractJSON(text));
-    countRead();
     const issues = failedChecks();
     if (issues.length){
       $('#readProgress').textContent = t('readingVerify');
@@ -1882,12 +1941,15 @@ async function moveMonth(){
   snapshot();
   const blob = await idb.get(oldKey);
   if (H.months[newKey]) H.log.unshift({id:'r' + Date.now(), type:'replace', key:newKey, before:calc(Object.assign(newState(target.m, target.y), H.months[newKey])).sum.tot, after:calc(S).sum.tot, at:Date.now()});
+  const oldParts = H.months[oldKey] && H.months[oldKey].photoParts, oldNewParts = H.months[newKey] && H.months[newKey].photoParts;
   delete H.months[oldKey]; await idb.del(oldKey);
-  S.month = target.m; S.year = target.y; S.key = newKey;
+  S.month = target.m; S.year = target.y; S.key = newKey; delete S.photoParts;
   H.months[newKey] = clone(S); saveHist();
+  cloudRun(async () => { await dropCloudMonth(oldKey, oldParts); for (let i = 0; i < (oldNewParts || 0); i++) await cloud.doc(`photos/${newKey}_${i}`).delete(); });
   if (blob){ await idb.put(newKey, blob); H.months[newKey].hasPhoto = S.hasPhoto = true; saveHist(); } else { await idb.del(newKey); }
   editable = canEdit(S.month, S.year); applyEditable();
   renderSheet(); refresh();
+  cloudSaveMonth(newKey, true);
 }
 
 /* ---------- dashboard ---------- */
@@ -2010,6 +2072,7 @@ async function importHistory(data, quiet){
   if (Array.isArray(data.log)) data.log.forEach(e => { if (e && e.id && !H.log.some(x => x.id === e.id)) H.log.push(e); });
   H.log.sort((a, b) => b.at - a.at);
   saveHist();
+  if (cloud) cloudRun(async () => { for (const k of Object.keys(data.months)) if (H.months[k]){ await pushMonth(k); if (H.months[k].hasPhoto) await pushPhoto(k); } await pushLog(); });
   if (!quiet) toast(s ? t('tImportedSkip', {n, s}) : t('tImported', {n}));
   return n;
 }
@@ -2021,6 +2084,7 @@ async function backupHistory(){
   await saveFile({blob:new Blob([JSON.stringify(data)], {type:'application/json'}), filename:`caisse-historique-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}.json`});
 }
 function histInfo(){
+  updCloudInfo();
   const ks = Object.keys(H.months);
   $('#histInfo').textContent = t('histInfo', {n:ks.length, p:ks.filter(k => H.months[k].hasPhoto).length});
 }
@@ -2152,7 +2216,7 @@ function openSettings(){
   $('#engineSettings').hidden = inClaude;
   const st = settings();
   $('#provGemini').checked = st.provider !== 'anthropic'; $('#provAnthropic').checked = st.provider === 'anthropic';
-  $('#apiKey').value = st.key || ''; $('#apiModel').value = st.model || ''; $('#readLimit').value = st.readLimit ?? 5;
+  $('#apiKey').value = st.key || ''; $('#apiModel').value = st.model || '';
   $('#corrWord').value = '';
   updModelPh(); histInfo(); showStep('settings');
 }
@@ -2265,8 +2329,7 @@ function init(){
   $('#btnSaveSettings').addEventListener('click', () => {
     const provider = $('#provAnthropic').checked ? 'anthropic' : 'gemini';
     const prev = settings();
-    const lim = Math.max(0, Math.min(50, parseInt($('#readLimit').value, 10) || 0));
-    store.set(SET_KEY, {provider, key:$('#apiKey').value.trim(), model:$('#apiModel').value.trim(), autoModel: prev.provider === provider ? prev.autoModel : '', readLimit:lim});
+    store.set(SET_KEY, {provider, key:$('#apiKey').value.trim(), model:$('#apiModel').value.trim(), autoModel: prev.provider === provider ? prev.autoModel : ''});
     engineNote(); toast(t('tSaved'));
     showStep('photo');
     if (photo.blob && engineReady() && !S) readPhoto();
@@ -2291,6 +2354,7 @@ function init(){
     if (!Object.keys(H.months).length && window.__CAISSE_SEED__){ try { await importHistory(window.__CAISSE_SEED__, true); } catch(e){} }
     histInfo();
     if (!$('#stepDash').hidden) renderDash();
+    await cloudInit();
   })();
 
   applyLang(); updCorrBand(); updResumeDraft(); showStep('photo');
