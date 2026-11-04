@@ -78,7 +78,7 @@ h2{font:600 20px/1.2 var(--display);margin:0 0 6px;text-wrap:balance}
 .drop input{position:absolute;width:1px;height:1px;opacity:0}
 .thumb{display:flex;gap:14px;align-items:center}
 .thumb img{width:84px;height:110px;object-fit:cover;border-radius:8px;border:1px solid var(--rule);cursor:zoom-in;background:var(--paper)}
-.status{display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;background:var(--ink-soft);color:var(--ink);font-weight:500}
+.status{white-space:pre-line;display:flex;gap:10px;align-items:center;padding:12px 14px;border-radius:10px;background:var(--ink-soft);color:var(--ink);font-weight:500}
 .status.err{background:var(--bad-bg);color:var(--bad)}
 .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-right-color:transparent;animation:sp 0.9s linear infinite;flex:none}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -1129,36 +1129,59 @@ function extractJSON(text){
   try { return JSON.parse(s.slice(a, b + 1)); } catch(e){ throw new Error(t('errNoTable')); }
 }
 
+// Fetch with a time limit; a dropped connection while the page was hidden is reported as an interruption.
+let hiddenDuringRead = false;
+async function fetchT(url, opts, ms){
+  const ac = new AbortController(); const timer = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, Object.assign({}, opts, {signal:ac.signal})); }
+  catch(e){
+    const err = new Error(ac.signal.aborted ? t('errTimeout') : hiddenDuringRead ? t('errInterrupted') : t('errNet'));
+    err.code = ac.signal.aborted ? 'timeout' : hiddenDuringRead ? 'interrupted' : 'network'; throw err;
+  } finally { clearTimeout(timer); }
+}
+const wait = ms => new Promise(r => setTimeout(r, ms));
 async function readGemini(blob, st){
   const b64 = await blobToB64(blob);
-  const call = model => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+  let thinking = true;
+  const call = model => fetchT(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method:'POST', headers:{'content-type':'application/json','x-goog-api-key':st.key},
-    body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}], generationConfig:{temperature:0, responseMimeType:'application/json'}})
-  });
+    body: JSON.stringify({contents:[{parts:[{text:prompt()},{inline_data:{mime_type:'image/jpeg', data:b64}}]}],
+      generationConfig: Object.assign({responseMimeType:'application/json'}, thinking ? {thinkingConfig:{thinkingLevel:'low'}} : {})})
+  }, 120000);
   let model = st.model || st.autoModel || DEFAULT_MODEL.gemini;
-  let res = await call(model);
-  if (res.status === 404 && !st.model){
-    model = await pickGeminiModel(st.key);
-    if (model){ store.set(SET_KEY, Object.assign(settings(), {autoModel:model})); res = await call(model); }
+  let res, body = {}, msg = '', switched = false;
+  for (let attempt = 0; attempt < 5; attempt++){
+    try { res = await call(model); }
+    catch(e){ if (e.code === 'network' && attempt < 2){ await wait(2000); continue; } throw e; }
+    body = await res.json().catch(() => ({})); msg = body?.error?.message || '';
+    if (res.ok) break;
+    if (res.status === 400 && thinking && /think/i.test(msg)){ thinking = false; continue; }           // model without thinking levels
+    if (res.status === 404 && !st.model && !switched){ const m = await pickGeminiModel(st.key, model); if (m){ model = m; switched = true; store.set(SET_KEY, Object.assign(settings(), {autoModel:m})); continue; } }
+    if (res.status >= 500 && attempt < 4){                                                              // overloaded: wait, then try another Flash model
+      if (attempt >= 1 && !st.model && !switched){ const m = await pickGeminiModel(st.key, model); if (m){ model = m; switched = true; } }
+      await wait(2500 * (attempt + 1)); continue;
+    }
+    break;
   }
-  const body = await res.json().catch(() => ({}));
   if (!res.ok){
-    const msg = body?.error?.message || '';
-    if (res.status === 400 && /API key/i.test(msg)) throw new Error(t('errGKey'));
-    if (res.status === 403) throw new Error(t('errG403'));
-    if (res.status === 429) throw new Error(t('errG429'));
-    if (res.status === 404) throw new Error(t('errModel', {m:model}));
-    if (res.status >= 500) throw new Error(t('errBusy'));
+    const detail = `\n(Google ${res.status}${msg ? ' : ' + msg.slice(0, 160) : ''})`;
+    if (res.status === 400 && /API key/i.test(msg)) throw new Error(t('errGKey') + detail);
+    if (res.status === 403) throw new Error(t('errG403') + detail);
+    if (res.status === 429) throw new Error(t('errG429') + detail);
+    if (res.status === 404) throw new Error(t('errModel', {m:model}) + detail);
+    if (res.status >= 500) throw new Error(t('errBusy') + detail);
     throw new Error(t('errOther', {p:'Google', s:res.status, m:msg}));
   }
   const parts = body?.candidates?.[0]?.content?.parts || [];
-  return parts.filter(p => !p.thought && p.text).map(p => p.text).join('');
+  const text = parts.filter(p => !p.thought && p.text).map(p => p.text).join('');
+  if (!text){ const why = body?.candidates?.[0]?.finishReason || body?.promptFeedback?.blockReason || ''; throw new Error(t('errEmpty') + (why ? `\n(Google : ${why})` : '')); }
+  return text;
 }
-async function pickGeminiModel(key){
+async function pickGeminiModel(key, avoid){
   try {
     const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200', {headers:{'x-goog-api-key':key}});
     const j = await r.json();
-    const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, ''));
+    const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => m.name.replace(/^models\//, '')).filter(n => n !== avoid);
     const ver = s => parseFloat((s.match(/gemini-(\d+(?:\.\d+)?)/) || [0, 0])[1]);
     const pick = list => list.sort((a, b) => ver(b) - ver(a))[0];
     return pick(ok.filter(n => /flash/.test(n) && !/(lite|tts|image|live|audio|embed|exp|preview|thinking)/.test(n)))
@@ -1168,11 +1191,11 @@ async function pickGeminiModel(key){
 async function readAnthropic(blob, st){
   const b64 = await blobToB64(blob);
   const model = st.model || DEFAULT_MODEL.anthropic;
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetchT('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{'content-type':'application/json','x-api-key':st.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
     body: JSON.stringify({model, max_tokens:8000, messages:[{role:'user', content:[{type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},{type:'text', text:prompt()}]}]})
-  });
+  }, 120000);
   const body = await res.json().catch(() => ({}));
   if (!res.ok){
     const msg = body?.error?.message || '';
@@ -1348,7 +1371,11 @@ Object.assign(I18N.fr, {
   corrExplain:'Les mois de plus de 6 mois sont verrouillés pour le contrôle. Ce mode les rend modifiables pendant 15 minutes. Chaque correction est notée dans le tableau de bord.',
   corrTypeLabel:'Tapez CORRIGER pour confirmer', corrOn:'Activer pour 15 minutes',
   tCorrOn:'Mode correction activé pour 15 minutes', tCorrBad:'Mot incorrect', tCorrEnded:'Mode correction terminé',
-  monthsShort:'janv.,févr.,mars,avr.,mai,juin,juil.,août,sept.,oct.,nov.,déc.'
+  monthsShort:'janv.,févr.,mars,avr.,mai,juin,juil.,août,sept.,oct.,nov.,déc.',
+  errInterrupted:"La lecture a été coupée parce que l'écran a été quitté. Elle reprend toute seule en revenant ici ; sinon, touchez « Réessayer ».",
+  errNet:'Connexion internet coupée. Vérifiez le Wi-Fi ou la 4G, puis réessayez.', errTimeout:'La lecture prend trop de temps. Réessayez.',
+  errBusy:'Le service de lecture est surchargé en ce moment. Réessayez dans quelques minutes.',
+  readingSub:'30 secondes à 1 minute. Restez sur cet écran.'
 });
 Object.assign(I18N.zh, {
   tabPhoto:'新的月份', tabDash:'总览',
@@ -1376,7 +1403,11 @@ Object.assign(I18N.zh, {
   corrExplain:'为了核对，超过 6 个月的月份会被锁定。这个模式可以在 15 分钟内修改它们，每次修改都会记录在总览里。',
   corrTypeLabel:'输入「修改」确认', corrOn:'开启 15 分钟',
   tCorrOn:'修改模式已开启 15 分钟', tCorrBad:'输入不正确', tCorrEnded:'修改模式已结束',
-  monthsShort:'1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月'
+  monthsShort:'1月,2月,3月,4月,5月,6月,7月,8月,9月,10月,11月,12月',
+  errInterrupted:'离开页面后识别被中断了。回到这个页面会自动重新开始；如果没有，请点“再试一次”。',
+  errNet:'网络断了，请检查 Wi-Fi 或手机网络后再试。', errTimeout:'识别时间太长，请再试一次。',
+  errBusy:'识别服务现在太忙，请过几分钟再试。',
+  readingSub:'大约 30 秒到 1 分钟，请停留在这个页面。'
 });
 const shortMonth = m => t('monthsShort').split(',')[m - 1];
 const fmt0 = x => new Intl.NumberFormat('fr-FR', {maximumFractionDigits:0}).format(Math.round(x)).replace(/ | /g, ' ');
@@ -1516,11 +1547,16 @@ async function openMonth(key){
 }
 
 /* ---------- photo → reading ---------- */
+let retryWhenVisible = false;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden){ hiddenDuringRead = true; return; }
+  if (retryWhenVisible && photo.blob){ retryWhenVisible = false; readPhoto(); }
+});
 async function onFile(file){
   if (!file) return;
   setStatus(null); $('#btnRetry').hidden = true;
   try {
-    const p = await prepImage(file, 2200);
+    const p = await prepImage(file, 2000);
     if (photo.url) URL.revokeObjectURL(photo.url);
     photo = {blob:p.blob, url:URL.createObjectURL(p.blob), w:p.w, h:p.h};
     $('#thumb').src = photo.url;
@@ -1535,7 +1571,7 @@ async function readPhoto(){
   if (!engineReady()){ if (!inClaude) openSettings(); return; }
   showStep('photo');
   $('#drop').hidden = true; $('#photoTip').hidden = true; $('#btnRetry').hidden = true; setStatus(null);
-  $('#reading').hidden = false;
+  $('#reading').hidden = false; hiddenDuringRead = document.hidden; retryWhenVisible = false;
   const t0 = Date.now(); clearInterval(readTimer);
   const tick = () => { $('#readTimer').textContent = `${Math.round((Date.now() - t0) / 1000)} s`; };
   tick(); readTimer = setInterval(tick, 1000);
@@ -1550,6 +1586,7 @@ async function readPhoto(){
     $('#reading').hidden = true; $('#drop').hidden = false; $('#photoTip').hidden = false;
     setStatus('err', (e && e.message) || String(e));
     $('#btnRetry').hidden = false;
+    if (e && e.code === 'interrupted') retryWhenVisible = true;
     return;
   }
   clearInterval(readTimer);
