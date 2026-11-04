@@ -113,6 +113,12 @@ select{border:1px solid var(--rule);background:var(--card);border-radius:10px;pa
 .chip.ok{background:var(--ok-bg);color:var(--ok)}
 .issue .t{font-weight:600}
 .issue .d{grid-column:2;color:var(--muted);font-size:14px}
+.issue-row{display:flex;flex-direction:column;gap:0;border:1px solid var(--rule-soft);border-radius:10px;background:var(--card);overflow:hidden}
+.issue-row .issue{border:0;border-radius:0}
+.ackbtn{border:0;border-top:1px solid var(--rule-soft);background:var(--ok-bg);color:var(--ok);font:600 15px var(--body);padding:12px;min-height:46px;cursor:pointer;text-align:center}
+.acklist{list-style:none;margin:0;padding:0}
+.acklist li{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule-soft);font-size:15px}
+.acklist li > div{min-width:0}
 .oklist{font-size:14px;color:var(--muted);margin:10px 0 0;padding-left:18px}
 
 /* figures */
@@ -404,6 +410,11 @@ label.btn{cursor:pointer}
       </div>
     </div>
 
+    <details class="card" id="ackBox" hidden>
+      <summary id="ackSummary">Points vérifiés</summary>
+      <ul class="acklist" id="ackList"></ul>
+    </details>
+
     <details class="card" id="recapBox">
       <summary data-t="recapTitle">Totaux écrits en bas de la feuille</summary>
       <p class="muted small" style="margin:0 0 10px" data-t="recapHelp"></p>
@@ -446,6 +457,10 @@ label.btn{cursor:pointer}
         <h3 class="h3" data-t="monthsTitle">Tous les mois</h3>
         <ul class="mlist" id="mlist"></ul>
         <p class="muted small" style="margin:0" data-t="lockRule"></p>
+      </div>
+      <div class="card stack" id="dashAckCard" hidden>
+        <h3 class="h3" data-t="dashAckTitle">Points vérifiés</h3>
+        <ul class="acklist" id="dashAckList"></ul>
       </div>
       <div class="card stack" id="logCard" hidden>
         <h3 class="h3" data-t="logTitle">Corrections de l'historique</h3>
@@ -852,7 +867,7 @@ function diffHint(L, d, written, computed, c){
 
 function checks(c, L = LANG){
   const out = []; const cellsBad = new Set(), cellsWarn = new Set();
-  const add = (level, title, detail, day, cells) => { out.push({level, title, detail, day, cells}); (cells || []).forEach(x => (level === 'bad' ? cellsBad : cellsWarn).add(x)); };
+  const add = (level, title, detail, day, cells, id) => { out.push({level, title, detail, day, cells, id}); (cells || []).forEach(x => (level === 'bad' ? cellsBad : cellsWarn).add(x)); };
   const lab = k => tr(L, 'L_' + k);
   let dayOk = 0, dayChecked = 0;
   const med = {};
@@ -861,33 +876,33 @@ function checks(c, L = LANG){
   for (let d = 1; d <= 31; d++){
     const r = S.days[d], cr = c.rows[d];
     const anyWritten = r.w20 != null || r.wtot != null;
-    if (d > c.n && (cr.has || anyWritten)){ add('bad', tr(L, 'kDay', {d}), tr(L, 'kOut', {m:monthName(S.month, L), n:c.n}), d, INPUTS.map(k => `${d}.${k}`)); continue; }
-    INPUTS.concat(['w20','wtot']).forEach(k => { if (r[k] != null && (isNaN(r[k]) || r[k] < 0)) add('bad', `${tr(L, 'kDay', {d})} · ${lab(k)}`, tr(L, 'kInvalid'), d, [`${d}.${k}`]); });
+    if (d > c.n && (cr.has || anyWritten)){ add('bad', tr(L, 'kDay', {d}), tr(L, 'kOut', {m:monthName(S.month, L), n:c.n}), d, INPUTS.map(k => `${d}.${k}`), `out:${d}`); continue; }
+    INPUTS.concat(['w20','wtot']).forEach(k => { if (r[k] != null && (isNaN(r[k]) || r[k] < 0)) add('bad', `${tr(L, 'kDay', {d})} · ${lab(k)}`, tr(L, 'kInvalid'), d, [`${d}.${k}`], `inv:${d}.${k}`); });
     if (r.w20 != null){
       dayChecked++;
-      if (!eq(r.w20, cr.ttc20)) add('bad', tr(L, 'kT20', {d}), tr(L, 'kDiff', {w:fmt(r.w20), c:fmt(cr.ttc20), e:fmt(r.w20 - cr.ttc20)}) + diffHint(L, d, r.w20, cr.ttc20, c), d, [`${d}.w20`]);
+      if (!eq(r.w20, cr.ttc20)) add('bad', tr(L, 'kT20', {d}), tr(L, 'kDiff', {w:fmt(r.w20), c:fmt(cr.ttc20), e:fmt(r.w20 - cr.ttc20)}) + diffHint(L, d, r.w20, cr.ttc20, c), d, [`${d}.w20`], `t20:${d}`);
       else dayOk++;
     }
     if (r.wtot != null){
       dayChecked++;
-      if (!eq(r.wtot, cr.tot)) add('bad', tr(L, 'kTot', {d}), tr(L, 'kDiff', {w:fmt(r.wtot), c:fmt(cr.tot), e:fmt(r.wtot - cr.tot)}) + diffHint(L, d, r.wtot, cr.tot, c), d, [`${d}.wtot`]);
+      if (!eq(r.wtot, cr.tot)) add('bad', tr(L, 'kTot', {d}), tr(L, 'kDiff', {w:fmt(r.wtot), c:fmt(cr.tot), e:fmt(r.wtot - cr.tot)}) + diffHint(L, d, r.wtot, cr.tot, c), d, [`${d}.wtot`], `tot:${d}`);
       else dayOk++;
     } else if (cr.has){
-      add('warn', tr(L, 'kNoTot', {d}), tr(L, 'kNoTotD'), d, [`${d}.wtot`]);
+      add('warn', tr(L, 'kNoTot', {d}), tr(L, 'kNoTotD'), d, [`${d}.wtot`], `notot:${d}`);
     }
-    if (!cr.has && r.wtot) add('bad', tr(L, 'kNoDet', {d}), tr(L, 'kNoDetD', {w:fmt(r.wtot)}), d, [`${d}.wtot`]);
+    if (!cr.has && r.wtot) add('bad', tr(L, 'kNoDet', {d}), tr(L, 'kNoDetD', {w:fmt(r.wtot)}), d, [`${d}.wtot`], `nodet:${d}`);
     INPUTS.forEach(k => {
       const v = n0(r[k]), m = med[k];
       if (!m || !v) return;
-      if (v > 4 * m && v - m > 30) add('warn', tr(L, 'kHigh', {d, f:lab(k)}), tr(L, 'kHighD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`]);
-      else if (m > 100 && v < m / 6) add('warn', tr(L, 'kLow', {d, f:lab(k)}), tr(L, 'kLowD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`]);
+      if (v > 4 * m && v - m > 30) add('warn', tr(L, 'kHigh', {d, f:lab(k)}), tr(L, 'kHighD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`], `high:${d}.${k}`);
+      else if (m > 100 && v < m / 6) add('warn', tr(L, 'kLow', {d, f:lab(k)}), tr(L, 'kLowD', {v:fmt(v), m:fmt(m)}), d, [`${d}.${k}`], `low:${d}.${k}`);
     });
   }
   Object.entries(S.uncertain).forEach(([key, u]) => {
     const [d, k] = key.split('.'); const dn = +d;
     const fname = dn >= 1 || dn === 0 ? (I18N.fr['L_' + k] ? lab(k) : k) : tr(L, 'R_' + k);
     const det = tr(L, 'kUncD', {f:fname, r:u && u.r != null ? fmt(u.r) : '?', a:u && u.a != null ? tr(L, 'kUncOr', {a:fmt(u.a)}) : ''});
-    add('warn', dn >= 1 ? tr(L, 'kUnc', {d:dn}) : tr(L, 'kUncG'), det, dn >= 1 ? dn : dn, [key]);
+    add('warn', dn >= 1 ? tr(L, 'kUnc', {d:dn}) : tr(L, 'kUncG'), det, dn >= 1 ? dn : dn, [key], `unc:${key}`);
   });
 
   const colMap = {...Object.fromEntries(INPUTS.map(k => [k, c.sum[k]])), w20: c.sum.ttc20, wtot: c.sum.tot};
@@ -895,21 +910,21 @@ function checks(c, L = LANG){
   let colChecked = 0;
   Object.entries(S.col).forEach(([k, v]) => {
     if (v == null || isNaN(v)) return; colChecked++;
-    if (!eq(v, colMap[k])) add('bad', tr(L, 'kCol', {f:colName(k)}), tr(L, 'kColD', {w:fmt(v), c:fmt(colMap[k]), e:fmt(v - colMap[k])}), 0, [`0.${k}`]);
+    if (!eq(v, colMap[k])) add('bad', tr(L, 'kCol', {f:colName(k)}), tr(L, 'kColD', {w:fmt(v), c:fmt(colMap[k]), e:fmt(v - colMap[k])}), 0, [`0.${k}`], `col:${k}`);
     else out.push({level:'ok', title:tr(L, 'kColOk', {f:colName(k), v:fmt(v)}), day:0});
   });
   let recapChecked = 0;
   RECAP.forEach(([k]) => {
     const v = S.recap[k]; if (v == null || isNaN(v)) return; recapChecked++;
     const comp = k === 'total' ? c.sum.tot : c.sum[k];
-    if (!eq(v, comp)) add('bad', tr(L, 'kRec', {f:tr(L, 'R_' + k)}), tr(L, 'kDiff', {w:fmt(v), c:fmt(comp), e:fmt(v - comp)}) + (k === 'carte' ? tr(L, 'kCardNote') : ''), -1, [`-1.${k}`]);
+    if (!eq(v, comp)) add('bad', tr(L, 'kRec', {f:tr(L, 'R_' + k)}), tr(L, 'kDiff', {w:fmt(v), c:fmt(comp), e:fmt(v - comp)}) + (k === 'carte' ? tr(L, 'kCardNote') : ''), -1, [`-1.${k}`], `rec:${k}`);
     else out.push({level:'ok', title:tr(L, 'kRecOk', {f:tr(L, 'R_' + k), v:fmt(v)}), day:-1});
   });
   if (S.recap.total != null && !isNaN(S.recap.total)){
     const parts = ['carte','especes','cheques','tickets'].map(k => S.recap[k]).filter(v => v != null && !isNaN(v));
-    if (parts.length >= 2){ const s = r2(parts.reduce((a, b) => a + b, 0)); if (!eq(s, S.recap.total)) add('warn', tr(L, 'kRecAdd'), tr(L, 'kRecAddD', {p:parts.map(fmt).join(' + '), s:fmt(s), t:fmt(S.recap.total)}), -1, ['-1.total']); }
+    if (parts.length >= 2){ const s = r2(parts.reduce((a, b) => a + b, 0)); if (!eq(s, S.recap.total)) add('warn', tr(L, 'kRecAdd'), tr(L, 'kRecAddD', {p:parts.map(fmt).join(' + '), s:fmt(s), t:fmt(S.recap.total)}), -1, ['-1.total'], 'recadd'); }
   }
-  if (!colChecked && !recapChecked && c.sum.tot) add('warn', tr(L, 'kNoMonth'), tr(L, 'kNoMonthD'), null, []);
+  if (!colChecked && !recapChecked && c.sum.tot) add('warn', tr(L, 'kNoMonth'), tr(L, 'kNoMonthD'), null, [], 'nomonth');
   if (dayChecked) out.push({level:'ok', title:tr(L, 'kDaysOk', {a:dayOk, b:dayChecked}), day:1});
   let daysVerified = 0;
   for (let d = 1; d <= c.n; d++){ const r = S.days[d], cr = c.rows[d]; if (r.wtot != null && eq(r.wtot, cr.tot) && (r.w20 == null || eq(r.w20, cr.ttc20))) daysVerified++; }
@@ -974,7 +989,7 @@ function renderSheet(){
 }
 
 function refresh(){
-  const c = calc(), ch = checks(c);
+  const c = calc(), ch = activeIssues(c);
   $('#monthTitle').textContent = monthYear(S.month, S.year);
   for (let d = 1; d <= 31; d++){
     const el = document.querySelector(`[data-calc="${d}"]`); if (el) el.textContent = c.rows[d].has ? fmt(c.rows[d].tot) : '';
@@ -987,7 +1002,7 @@ function refresh(){
     el.classList.toggle('is-bad', ch.cellsBad.has(k));
     el.classList.toggle('is-warn', !ch.cellsBad.has(k) && ch.cellsWarn.has(k));
   });
-  let bad = ch.list.filter(x => x.level === 'bad'), warn = ch.list.filter(x => x.level === 'warn');
+  let bad = ch.live.filter(x => x.level === 'bad'), warn = ch.live.filter(x => x.level === 'warn');
   // A misread on one day also breaks every month total: show the day, and fold the month totals into one line.
   const dayBad = bad.filter(x => x.day >= 1), monthBad = bad.filter(x => !(x.day >= 1));
   if (dayBad.length && monthBad.length > 1){
@@ -1004,9 +1019,11 @@ function refresh(){
   else if (warn.length){ cls = 'warn'; mark = '✓'; big = t('vWarn'); sub = t('vWarnSub', {n:warn.length}); }
   else { cls = 'ok'; mark = '✓'; big = t('vOk'); sub = t('vOkSub'); }
   const checked = ch.daysVerified ? `<div class="checked">${esc(t('vChecked', {a:ch.daysVerified}))}</div>` : '';
-  const items = [...bad, ...warn].map(x => `<li><button type="button" class="issue" data-goto="${esc((x.cells && x.cells[0]) || '')}"><span class="chip ${x.level}">${t(x.level === 'bad' ? 'chipBad' : 'chipWarn')}</span><span class="t">${esc(x.title)}</span><span class="d">${esc(x.detail)}</span></button></li>`).join('');
-  $('#verdict').innerHTML = `<div class="stack" style="gap:10px"><div class="verdict ${cls}"><span class="mark">${mark}</span><div><div class="big">${esc(big)}</div><div class="small">${esc(sub)}</div>${checked}</div></div>
+  const items = [...bad, ...warn].map(x => `<li class="issue-row"><button type="button" class="issue" data-goto="${esc((x.cells && x.cells[0]) || '')}"><span class="chip ${x.level}">${t(x.level === 'bad' ? 'chipBad' : 'chipWarn')}</span><span class="t">${esc(x.title)}</span><span class="d">${esc(x.detail)}</span></button>${x.id && editable ? `<button type="button" class="ackbtn" data-ack="${esc(x.id)}">✓ ${esc(t('ackBtn'))}</button>` : ''}</li>`).join('');
+  const ackN = (S.acks || []).length;
+  $('#verdict').innerHTML = `<div class="stack" style="gap:10px"><div class="verdict ${cls}"><span class="mark">${mark}</span><div><div class="big">${esc(big)}</div><div class="small">${esc(sub)}</div>${checked}${ackN ? `<div class="checked">${esc(t('vAcked', {n:ackN}))}</div>` : ''}</div></div>
     ${items ? `<ul class="issues">${items}</ul>` : ''}</div>`;
+  renderAcks();
   const writtenTotal = S.recap.total ?? S.col.wtot;
   const w = (val, comp) => { if (val == null || isNaN(val)) return ''; const good = eq(val, comp); return `<div class="w ${good ? 'ok' : 'bad'}">${esc(t('writtenOnSheet'))} <span class="hand">${fmt(val)}</span> ${good ? '✓' : '≠'}</div>`; };
   const fig = (cls, label, v, wr) => `<div class="${cls}"><div class="l">${esc(label)}</div><div class="v">${fmt(v)}${cls === 't1' ? ' €' : ''}</div>${wr || ''}</div>`;
@@ -1434,6 +1451,7 @@ function buildPdf(st = S){
 
 /* ---------- extra text (tabs, dashboard, history, lock) ---------- */
 Object.assign(I18N.fr, {
+  ackBtn:"C'est vérifié", ackedTitle:'Points vérifiés ({n})', ackedOn:'vérifié le {d}', unack:'Rouvrir', dashAckTitle:'Points vérifiés', vAcked:'{n} point(s) vérifié(s) à la main',
   msExists:"Ce mois a déjà des chiffres dans le tableau de bord. Vous verrez d'abord le résultat : rien ne sera remplacé tant que vous n'aurez pas validé.",
   msContinue:"Voir le résultat d'abord", msExistsMove:'Ce mois a déjà des chiffres : ils seront remplacés par ceux-ci.',
   draftBand:'Brouillon : {m} a déjà des chiffres enregistrés (total {t} €). Ils restent tels quels tant que vous ne validez pas en bas de la page.',
@@ -1478,6 +1496,7 @@ Object.assign(I18N.fr, {
   readingSend:'Envoi de la photo…', readingThinking:'Le service examine la feuille…', readingDays:'{n} jours lus', readingRetry:'Le service est lent, nouvel essai ({n})…'
 });
 Object.assign(I18N.zh, {
+  ackBtn:'已核对', ackedTitle:'已核对的问题（{n}）', ackedOn:'核对于 {d}', unack:'撤回', dashAckTitle:'已核对的问题', vAcked:'{n} 处已手动核对',
   msExists:'总览里这个月份已经有数据了。会先显示识别结果，在您确认之前不会替换。',
   msContinue:'先看结果', msExistsMove:'这个月份已经有数据，会被这里的数字替换。',
   draftBand:'草稿：{m} 已经保存过数据（总额 {t} €）。在您点页面最下面的确认之前，原来的数据不会改变。',
@@ -1895,6 +1914,11 @@ function renderDash(){
     <span class="m">${esc(monthYear(r.m, r.y))}</span><span class="t">${fmt0(r.tot)}</span>
     <span class="y ${p == null ? '' : p > 0.0005 ? 'up' : p < -0.0005 ? 'down' : ''}">${p == null ? '' : esc(pct(p))}</span>
     <span class="ic">${r.hasPhoto ? camSvg : ''}${r.locked && !corrOn() ? lockSvg : ''}</span></button></li>`; }).join('');
+  // checked points, all months
+  const allAcks = []; rows.forEach(r => (H.months[r.k].acks || []).forEach(a => allAcks.push(Object.assign({k:r.k, m:r.m, y:r.y}, a))));
+  allAcks.sort((a, b) => b.at - a.at);
+  $('#dashAckCard').hidden = !allAcks.length;
+  $('#dashAckList').innerHTML = allAcks.slice(0, 60).map(a => { const tx = a[LANG] || a.fr; return `<li><div><b>${esc(monthYear(a.m, a.y))} · ${esc(tx.t)}</b><br><span class="muted">${esc(tx.d)}</span><br><span class="small muted">${esc(t('ackedOn', {d:ackDate(a.at)}))}</span></div></li>`; }).join('');
   // corrections log
   $('#logCard').hidden = !H.log.length;
   $('#loglist').innerHTML = H.log.map(e => { const {m, y} = parseKey(e.key); return `<li>${esc(t(e.type === 'replace' ? 'logReplace' : 'logLine', {d:new Date(e.at).toLocaleString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {dateStyle:'short', timeStyle:'short'}), m:monthYear(m, y), a:fmt(e.before ?? 0), b:fmt(e.after)}))}</li>`; }).join('');
@@ -1961,6 +1985,38 @@ function histInfo(){
   $('#histInfo').textContent = t('histInfo', {n:ks.length, p:ks.filter(k => H.months[k].hasPhoto).length});
 }
 
+function ackDate(at){ return new Date(at).toLocaleString(LANG === 'zh' ? 'zh-CN' : 'fr-FR', {dateStyle:'short', timeStyle:'short'}); }
+function renderAcks(){
+  const acks = (S && S.acks) || [];
+  $('#ackBox').hidden = !acks.length;
+  $('#ackSummary').textContent = t('ackedTitle', {n:acks.length});
+  $('#ackList').innerHTML = acks.slice().sort((a, b) => b.at - a.at).map(a => { const tx = a[LANG] || a.fr; return `<li><div><b>${esc(tx.t)}</b><br><span class="muted">${esc(tx.d)}</span><br><span class="small muted">${esc(t('ackedOn', {d:ackDate(a.at)}))}</span></div>${editable ? `<button type="button" class="linkbtn" data-unack="${esc(a.id)}">${esc(t('unack'))}</button>` : ''}</li>`; }).join('');
+}
+
+/* ---------- issues marked as checked ("c'est vérifié") ---------- */
+// An acknowledgement holds while the issue reads the same (same numbers); if the figures change, the issue comes back.
+function activeIssues(c = calc()){
+  const ch = checks(c), fr = checks(c, 'fr');
+  const sig = Object.fromEntries(fr.list.filter(x => x.id).map(x => [x.id, x.detail]));
+  const acks = S.acks || [];
+  const isAcked = x => x.id && acks.some(a => a.id === x.id && a.sig === sig[x.id]);
+  const list = ch.list.map(x => Object.assign(x, {acked: isAcked(x)}));
+  const live = list.filter(x => !x.acked);
+  const cellsBad = new Set(), cellsWarn = new Set();
+  live.forEach(x => (x.cells || []).forEach(k => (x.level === 'bad' ? cellsBad : x.level === 'warn' ? cellsWarn : null)?.add(k)));
+  return {list, live, cellsBad, cellsWarn, daysVerified: ch.daysVerified, sig};
+}
+function ackIssue(id){
+  if (!editable || !S) return;
+  const c = calc(), fr = checks(c, 'fr').list.find(x => x.id === id), zh = checks(c, 'zh').list.find(x => x.id === id);
+  if (!fr) return;
+  snapshot();
+  S.acks = (S.acks || []).filter(a => a.id !== id);
+  S.acks.push({id, sig:fr.detail, level:fr.level, at:Date.now(), fr:{t:fr.title, d:fr.detail}, zh:{t:zh ? zh.title : fr.title, d:zh ? zh.detail : fr.detail}});
+  changed();
+}
+function unackIssue(id){ if (!editable || !S) return; snapshot(); S.acks = (S.acks || []).filter(a => a.id !== id); changed(); }
+
 /* ---------- static text ---------- */
 function applyLang(){
   document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'fr';
@@ -1989,7 +2045,7 @@ async function saveFile({blob, filename}){
   toast(t('tDownloaded', {f:filename}));
 }
 function warnBefore(){
-  const bad = checks(calc()).list.filter(x => x.level === 'bad').length;
+  const bad = activeIssues().live.filter(x => x.level === 'bad').length;
   if (bad) toast(t('tUnfixed', {n:bad}));
 }
 
@@ -2027,7 +2083,7 @@ function init(){
   $('#btnMonthEdit').addEventListener('click', moveMonth);
   $('#btnDone').addEventListener('click', () => { saveMonth(); renderDash(); showStep('dash'); });
   $('#btnValidate').addEventListener('click', () => {
-    const old = H.months[S.key]; const bad = checks(calc()).list.filter(x => x.level === 'bad').length;
+    const old = H.months[S.key]; const bad = activeIssues().live.filter(x => x.level === 'bad').length;
     $('#cfTitle').textContent = t('cfTitle', {m:monthYear(S.month, S.year)});
     $('#cfBody').textContent = t('cfBody', {m:monthYear(S.month, S.year), a: old ? fmt(calc(Object.assign(newState(S.month, S.year), old)).sum.tot) : '0', b: fmt(calc().sum.tot)});
     $('#cfBad').hidden = !bad; $('#cfBad').textContent = t('cfBad', {n:bad});
@@ -2082,7 +2138,11 @@ function init(){
     e.preventDefault(); const [d, k] = e.target.dataset.key.split('.');
     const next = document.querySelector(`[data-key="${+d + 1}.${k}"]`); if (next) next.focus(); else e.target.blur();
   });
-  $('#verdict').addEventListener('click', e => { const b = e.target.closest('[data-goto]'); if (b) gotoCell(b.dataset.goto); });
+  $('#verdict').addEventListener('click', e => {
+    const a = e.target.closest('[data-ack]'); if (a){ ackIssue(a.dataset.ack); return; }
+    const b = e.target.closest('[data-goto]'); if (b) gotoCell(b.dataset.goto);
+  });
+  $('#ackList').addEventListener('click', e => { const u = e.target.closest('[data-unack]'); if (u) unackIssue(u.dataset.unack); });
   // PDF (no Excel)
   $('#btnPdf').addEventListener('click', () => { warnBefore(); saveFile(buildPdf()); });
   if (!inClaude && navigator.canShare){
